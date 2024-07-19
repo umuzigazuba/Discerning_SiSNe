@@ -1,0 +1,4 @@
+ tnsname control_id          ra         dec   ra_offset  dec_offset radius_arcsec n_detec n_detec_o n_detec_c
+2023abtj          0 21.75575000 33.95493056           0           0             0    3132      2371       761
+     NaN          1 21.75005699 33.95493056 -0.00569301  0.00000000          17.0    3137      2371       766
+     NaN          2 21.76144301 33.95493056  0.00569301 -0.00000000          17.0    3135      2371       764

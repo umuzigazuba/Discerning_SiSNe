@@ -1,0 +1,4 @@
+tnsname control_id          ra        dec   ra_offset  dec_offset radius_arcsec n_detec n_detec_o n_detec_c
+2021vzp          0 56.89817083 2.88290278           0           0             0    2529      1943       586
+    NaN          1 56.89344263 2.88290278 -0.00472821  0.00000000          17.0    2528      1943       585
+    NaN          2 56.90289904 2.88290278  0.00472821 -0.00000000          17.0    2529      1943       586
