@@ -53,9 +53,9 @@ std_two_peaks = initial_std_two_peaks
 
 parameter_bounds_one_peak = ([-0.3, -100, -2, 0, 0, 0, -3, -1, -50, -1.5, -1.5, -2, -1.5, -1.5], [0.5, 30, 4, 3.5, 0.03, 4, -0.8, 1, 30, 1.5, 1.5, 1, 1.5, -1])
 
-parameter_bounds_gaussian = ([0, 0, 0, -0.5, -0.5, -1.5], [1.5, 300, 250, 1.5, 1.5, 2.0])
+parameter_bounds_gaussian = ([0, -300, 0, -0.5, -0.5, -1.5], [1.5, 300, 250, 1.5, 1.5, 2.0])
 
-# parameter_bounds_two_peaks = ([-0.3, -100, -2, 0, 0, 0, -3, -1, -50, -1.5, -1.5, -2, -1.5, -1.5 , 0, 0, 0, -3, -3, -3], [0.5, 30, 4, 3.5, 0.03, 4, -0.8, 1, 30, 1.5, 1.5, 1, 1.5, -1, 1, 500, 250, 3, 3, 3])
+parameter_bounds_two_peaks = ([-0.3, -100, -2, 0, 0, 0, -3, -1, -50, -1.5, -1.5, -2, -1.5, -1.5, 0, -300, 0, -0.5, -0.5, -1.5], [0.5, 30, 4, 3.5, 0.03, 4, -0.8, 1, 30, 1.5, 1.5, 1, 1.5, -1, 1.5, 300, 250, 1.5, 1.5, 2.0])
 
 def prior_one_peak(cube, ndim, nparams):
 
@@ -774,6 +774,14 @@ def function_approximation_two_peaks(time, *cube):
     cube = list(cube)
     return light_curve_two_peaks(time, cube, flux[peak_main_idx], f1_values, f2_values)
 
+def function_approximation_two_peaks_fit(time, f1_values_fit, f2_values_fit, *cube):
+
+    global flux, peak_main_idx
+
+    cube = list(cube)
+    return light_curve_two_peaks(time, cube, flux[peak_main_idx], f1_values_fit, f2_values_fit)
+
+
 def reduced_chi_squared_two_peaks(cube):
         
     global time, flux, fluxerr, f1_values, f2_values, peak_main_idx
@@ -946,7 +954,7 @@ def fit_light_curve(SN_id, survey):
         
         red_chi_squared_OP_NS_LM = reduced_chi_squared_one_peak(imporved_peak_parameters)
                
-        ### Fit a two-peaks light curve
+        ## Fit a two-peaks light curve
         # Identify the main filter for the second peak ("r" if it exists and contains a peak)
         if f1 in filters and extrema_f1[2] != -1:
             main_filter_second_peak = f1
@@ -981,67 +989,86 @@ def fit_light_curve(SN_id, survey):
                 elif f2 in filters and extrema_f2[2] != -1:
                     guess_parameters = np.array([1, time_aug[f2_values_aug][extrema_f2][2], peak_width_f2, 1, 1, 1])
 
-            # Estimate the parameters of the second peak in both bands simultaneously
-            try:
-                second_peak_parameters, _ = curve_fit(second_peak, time_peak, flux_peak, p0 = guess_parameters, sigma = fluxerr_peak, bounds = parameter_bounds_gaussian, maxfev = 100000)
-            
-            except RuntimeError:
-                second_peak_parameters = guess_parameters
+            down_bound = [0, -300, 0, -0.5, -1.5, -1.5]
+            up_bound = [1.5, 300, 250, 1.5, 1.5, 2.0]
 
-            # Calculate the predicted flux of the second peak
-            flux_peak_fit = second_peak_fit(time, *second_peak_parameters)
+            if not ((down_bound < guess_parameters) & (guess_parameters < up_bound)).all():
 
-            # Calculate the flux without the second peak
-            original_flux = np.copy(flux)
-            flux -= flux_peak_fit
+                # The one-peak light curve is a better fit
+                np.save(f"Data/Analytical_parameters/{survey}/one_peak/NS/{SN_id}_OP_NS", one_peak_parameters)
+                np.save(f"Data/Analytical_parameters/{survey}/one_peak/NS_LM/{SN_id}_OP_NS_LM", imporved_peak_parameters)
 
-            residual_parameters = find_parameters_one_peak(survey, SN_id)
+                # Plot the results
+                flux_fit_OP_NS = light_curve_one_peak(time_fit, one_peak_parameters, peak_flux, f1_values_fit, f2_values_fit)
+                plot_best_fit_light_curve(SN_id, red_chi_squared_OP_NS, time_fit, flux_fit_OP_NS, f1_values_fit, f2_values_fit, peak_time, f"{survey}/one_peak/NS/light_curve_{SN_id}_OP_NS")
 
-            flux = original_flux
+                flux_fit_OP_NS_LM = light_curve_one_peak(time_fit, imporved_peak_parameters, peak_flux, f1_values_fit, f2_values_fit)
+                plot_best_fit_light_curve(SN_id, red_chi_squared_OP_NS_LM, time_fit, flux_fit_OP_NS_LM, f1_values_fit, f2_values_fit, peak_time, f"{survey}/one_peak/NS_LM/light_curve_{SN_id}_OP_NS_LM")
 
-            # initial_guesses = list(residual_parameters) + list(second_peak_parameters)
-            initial_mean_two_peaks = list(residual_parameters) + list(second_peak_parameters)
-            mean_two_peaks = initial_mean_two_peaks
-            two_peaks_parameters = find_parameters_two_peaks(survey, SN_id)
+            else:
+
+                # Estimate the parameters of the second peak in both bands simultaneously
+                try:
+                    second_peak_parameters, _ = curve_fit(second_peak, time_peak, flux_peak, p0 = guess_parameters, sigma = fluxerr_peak, bounds = parameter_bounds_gaussian, maxfev = 100000)
+                
+                except RuntimeError:
+                    second_peak_parameters = guess_parameters
+
+                # Calculate the predicted flux of the second peak
+                flux_peak_fit = second_peak_fit(time, *second_peak_parameters)
+
+                # Calculate the flux without the second peak
+                original_flux = np.copy(flux)
+                flux -= flux_peak_fit
+
+                residual_parameters = find_parameters_one_peak(survey, SN_id)
+
+                flux = original_flux
+
+                initial_guesses = list(residual_parameters) + list(second_peak_parameters)
+                # initial_mean_two_peaks = list(residual_parameters) + list(second_peak_parameters)
+                # mean_two_peaks = initial_mean_two_peaks
+                # two_peaks_parameters = find_parameters_two_peaks(survey, SN_id)
 
 
-            # Estimate the parameters of the full light curve in both bands simultaneously
-            # try:
-            #     two_peaks_parameters, _ = curve_fit(function_approximation_two_peaks, time, flux, p0 = initial_guesses, sigma = fluxerr, bounds = parameter_bounds_two_peaks, maxfev = 100000)
-            
-            # except RuntimeError:
-            #     two_peaks_parameters = initial_guesses
+                # Estimate the parameters of the full light curve in both bands simultaneously
+                try:
+                    two_peaks_parameters, _ = curve_fit(function_approximation_two_peaks, time, flux, p0 = initial_guesses, sigma = fluxerr, bounds = parameter_bounds_two_peaks, maxfev = 100000)
+                
+                except RuntimeError:
+                    two_peaks_parameters = initial_guesses
 
-            red_chi_squared_TP = reduced_chi_squared_two_peaks(two_peaks_parameters)
+                red_chi_squared_TP = reduced_chi_squared_two_peaks(two_peaks_parameters)
 
-        ### Based on best red chi squared value save one or two peak parameter and plot
+                ### Based on best red chi squared value save one or two peak parameter and plot
 
-        if red_chi_squared_OP_NS < red_chi_squared_TP or red_chi_squared_OP_NS_LM < red_chi_squared_TP:
-            # The one-peak light curve is a better fit
-            np.save(f"Data/Analytical_parameters/{survey}/one_peak/NS/{SN_id}_OP_NS", one_peak_parameters)
-            np.save(f"Data/Analytical_parameters/{survey}/one_peak/NS_LM/{SN_id}_OP_NS_LM", imporved_peak_parameters)
+                if np.abs(red_chi_squared_OP_NS - 1) < np.abs(red_chi_squared_TP - 1) or np.abs(red_chi_squared_OP_NS_LM - 1) < np.abs(red_chi_squared_TP - 1):
+                    # The one-peak light curve is a better fit
+                    np.save(f"Data/Analytical_parameters/{survey}/one_peak/NS/{SN_id}_OP_NS", one_peak_parameters)
+                    np.save(f"Data/Analytical_parameters/{survey}/one_peak/NS_LM/{SN_id}_OP_NS_LM", imporved_peak_parameters)
 
-            # Plot the results
-            flux_fit_OP_NS = light_curve_one_peak(time_fit, one_peak_parameters, peak_flux, f1_values_fit, f2_values_fit)
-            plot_best_fit_light_curve(SN_id, red_chi_squared_OP_NS, time_fit, flux_fit_OP_NS, f1_values_fit, f2_values_fit, peak_time, f"{survey}/one_peak/NS/light_curve_{SN_id}_OP_NS")
+                    # Plot the results
+                    flux_fit_OP_NS = light_curve_one_peak(time_fit, one_peak_parameters, peak_flux, f1_values_fit, f2_values_fit)
+                    plot_best_fit_light_curve(SN_id, red_chi_squared_OP_NS, time_fit, flux_fit_OP_NS, f1_values_fit, f2_values_fit, peak_time, f"{survey}/one_peak/NS/light_curve_{SN_id}_OP_NS")
 
-            flux_fit_OP_NS_LM = light_curve_one_peak(time_fit, imporved_peak_parameters, peak_flux, f1_values_fit, f2_values_fit)
-            plot_best_fit_light_curve(SN_id, red_chi_squared_OP_NS_LM, time_fit, flux_fit_OP_NS_LM, f1_values_fit, f2_values_fit, peak_time, f"{survey}/one_peak/NS_LM/light_curve_{SN_id}_OP_NS_LM")
+                    flux_fit_OP_NS_LM = light_curve_one_peak(time_fit, imporved_peak_parameters, peak_flux, f1_values_fit, f2_values_fit)
+                    plot_best_fit_light_curve(SN_id, red_chi_squared_OP_NS_LM, time_fit, flux_fit_OP_NS_LM, f1_values_fit, f2_values_fit, peak_time, f"{survey}/one_peak/NS_LM/light_curve_{SN_id}_OP_NS_LM")
 
-        else:
-            # The two-peaks light curve is a better fit
-            np.save(f"Data/Analytical_parameters/{survey}/two_peaks/{SN_id}_TP", two_peaks_parameters) 
+                else:
+                    # The two-peaks light curve is a better fit
+                    np.save(f"Data/Analytical_parameters/{survey}/two_peaks/{SN_id}_TP", two_peaks_parameters) 
 
-            # Plot the results
-            flux_fit_TP = light_curve_two_peaks(time_fit, two_peaks_parameters, peak_flux, f1_values_fit, f2_values_fit)
-            plot_best_fit_light_curve(SN_id, red_chi_squared_TP, time_fit, flux_fit_TP, f1_values_fit, f2_values_fit, peak_time, f"{survey}/two_peaks/light_curve_{SN_id}_TP")
+                    # Plot the results
+                    flux_fit_TP = light_curve_two_peaks(time_fit, two_peaks_parameters, peak_flux, f1_values_fit, f2_values_fit)
+                    plot_best_fit_light_curve(SN_id, red_chi_squared_TP, time_fit, flux_fit_TP, f1_values_fit, f2_values_fit, peak_time, f"{survey}/two_peaks/light_curve_{SN_id}_TP")
 
 # %%
 
 survey = "ZTF"
 
-for SN_id in ["ZTF22ablxcrh"]:
+for SN_id in ztf_id_sn_IIn[:25]:
 
     fit_light_curve(SN_id, survey)
+
 
 # %%
