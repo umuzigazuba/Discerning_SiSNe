@@ -1014,6 +1014,20 @@ def fit_light_curve(SN_id, survey):
                 except RuntimeError:
                     second_peak_parameters = guess_parameters
 
+                except ValueError:
+                    # The one-peak light curve is a better fit
+                    np.save(f"Data/Analytical_parameters/{survey}/one_peak/NS/{SN_id}_OP_NS", one_peak_parameters)
+                    np.save(f"Data/Analytical_parameters/{survey}/one_peak/NS_LM/{SN_id}_OP_NS_LM", imporved_peak_parameters)
+
+                    # Plot the results
+                    flux_fit_OP_NS = light_curve_one_peak(time_fit, one_peak_parameters, peak_flux, f1_values_fit, f2_values_fit)
+                    plot_best_fit_light_curve(SN_id, red_chi_squared_OP_NS, time_fit, flux_fit_OP_NS, f1_values_fit, f2_values_fit, peak_time, f"{survey}/one_peak/NS/light_curve_{SN_id}_OP_NS")
+
+                    flux_fit_OP_NS_LM = light_curve_one_peak(time_fit, imporved_peak_parameters, peak_flux, f1_values_fit, f2_values_fit)
+                    plot_best_fit_light_curve(SN_id, red_chi_squared_OP_NS_LM, time_fit, flux_fit_OP_NS_LM, f1_values_fit, f2_values_fit, peak_time, f"{survey}/one_peak/NS_LM/light_curve_{SN_id}_OP_NS_LM")
+
+                    return
+
                 # Calculate the predicted flux of the second peak
                 flux_peak_fit = second_peak_fit(time, *second_peak_parameters)
 
@@ -1066,9 +1080,12 @@ def fit_light_curve(SN_id, survey):
 
 survey = "ZTF"
 
-for SN_id in ztf_id_sn_IIn[:25]:
+for SN_id in ztf_id_sn_IIn[100:150]:
 
     fit_light_curve(SN_id, survey)
 
 
+# %%
+
+print(np.where(ztf_id_sn_IIn == SN_id))
 # %%
