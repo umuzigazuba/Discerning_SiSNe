@@ -53,9 +53,15 @@ def retrieve_ztf_data(ztf_id):
     return ra, dec, time_r, mag_r, magerr_r, time_g, mag_g, magerr_g
 
 def ztf_magnitude_to_micro_flux(magnitude, magnitude_error):
-    flux = np.power(10, -0.4*(magnitude - 26.3))
-    flux_error = 0.4*np.log(10)*magnitude_error*flux
+
+    flux = np.power(10, -0.4 * (magnitude - 23.9))
+    flux_error = 0.4 * np.log(10) * magnitude_error * flux
     return flux, flux_error
+
+def ztf_micro_flux_to_magnitude(flux):
+
+    magnitude = -2.5 * np.log10(flux) + 23.9
+    return magnitude
 
 def load_ztf_data(ztf_id):
 
@@ -108,9 +114,9 @@ def plot_ztf_data(ztf_id, time, flux, fluxerr, filters, save_fig = False):
 
 ### ATLAS ###
 
-def retrieve_atlas_data(object_type, atlas_id, discovery_dates, passband):
+def retrieve_atlas_data(atlas_id, discovery_dates, passband):
 
-    data = np.loadtxt(f"Data/ATLAS_data/{object_type}/{atlas_id}/{atlas_id}.{passband}.1.00days.lc.txt", skiprows = 1, usecols = (0, 2, 3))
+    data = np.loadtxt(f"Data/OLD_ATLAS_data/{atlas_id}/{atlas_id}.{passband}.1.00days.lc.txt", skiprows = 1, usecols = (0, 2, 3))
     valid_data_idx = np.where((~np.isnan(data[:, 0])) & (data[:, 2] < 50))
     valid_data = data[valid_data_idx]
 
@@ -118,11 +124,11 @@ def retrieve_atlas_data(object_type, atlas_id, discovery_dates, passband):
     start_date = float(discovery_dates[start_date_idx, 1][0, 0])
     last_date = valid_data[-1, 0]
 
-
     if start_date + 300 > last_date:
         end_date = last_date
     else:
         end_date = start_date + 300
+        
     SN_dates = np.where((valid_data[:, 0] >= start_date) & (valid_data[:, 0] <= end_date))
 
     if len(SN_dates[0] != 0):
@@ -134,14 +140,38 @@ def retrieve_atlas_data(object_type, atlas_id, discovery_dates, passband):
     
     return [], [], []
 
+def load_atlas_data(atlas_id):
+
+    time = []
+    flux = []
+    fluxerr = []
+    filters = []
+
+    if os.path.isdir(f"Data/ATLAS_data/{atlas_id}/o/"):
+        atlas_data_o = np.load(f"Data/ATLAS_data/{atlas_id}/o/.npy")
+
+        time.extend(atlas_data_o[0])
+        flux.extend(atlas_data_o[1])
+        fluxerr.extend(atlas_data_o[2])
+        filters.extend(["o"] * len(atlas_data_o[0]))
+
+    if os.path.isdir(f"Data/ATLAS_data/{atlas_id}/c/"):
+        atlas_data_c = np.load(f"Data/ATLAS_data/{atlas_id}/c/.npy")
+
+        time.extend(atlas_data_c[0])
+        flux.extend(atlas_data_c[1])
+        fluxerr.extend(atlas_data_c[2])
+        filters.extend(["c"] * len(atlas_data_c[0]))
+
+    return np.array(time), np.array(flux), np.array(fluxerr), np.array(filters)
 
 def plot_atlas_data(atlas_id, time_c, flux_c, fluxerr_c, time_o, flux_o, fluxerr_o, save_fig = False):
 
-    if len(time_c) != 0:
-        plt.errorbar(time_c, flux_c, yerr = fluxerr_c, fmt = "o", markersize = 4, capsize = 2, color = "blue", label = "Band: c")
-
     if len(time_o) != 0:
-        plt.errorbar(time_o, flux_o, yerr = fluxerr_o, fmt = "o", markersize = 4, capsize = 2, color = "orange", label = "Band: o")
+        plt.errorbar(time_o, flux_o, yerr = fluxerr_o, fmt = "o", markersize = 4, capsize = 2, color = "tab:blue", label = "Band: o")
+
+    if len(time_c) != 0:
+        plt.errorbar(time_c, flux_c, yerr = fluxerr_c, fmt = "o", markersize = 4, capsize = 2, color = "tab:blue", label = "Band: c")
 
     plt.xlabel("Modified Julian Date", fontsize = 13)
     plt.ylabel("Flux $(\mu Jy)$", fontsize = 13)
@@ -206,9 +236,12 @@ def plot_data_augmentation(SN_id, passbands, passband2lam, augmentation_type, ti
 
 ztf_id_sn_Ia_CSM= np.loadtxt("Data/ZTF_ID_SNe_Ia_CSM", delimiter = ",", dtype = "str")
 ztf_id_sn_IIn= np.loadtxt("Data/ZTF_ID_SNe_IIn", delimiter = ",", dtype = "str")
-        
+
 ztf_id = np.concatenate((ztf_id_sn_Ia_CSM, ztf_id_sn_IIn))
 ztf_types = np.concatenate((np.zeros(len(ztf_id_sn_Ia_CSM)), np.ones(len(ztf_id_sn_IIn))))
+
+# ztf_id_sn_Ia_CSM = ["ZTF18abuatfp", "ZTF18actuhrs", "ZTF19aaeoqst", "ZTF19acbjddp", "ZTF20abmlxrx", "ZTF20abqkbfx", "ZTF20acqikeh", "ZTF21aaabwzx", "ZTF22aadgsdi", "ZTF22aaemvhi", "ZTF22aahgnxz", "ZTF22ablxcrh", "ZTF23aaazegi", "ZTF23aacdnjz", "ZTF23aagpjyp", "ZTF23aamsekn", "ZTF23aatabje", "ZTF23aaynmrz", "ZTF23abgnvya"]
+# ztf_id_sn_IIn = ["ZTF18aadmssd", "ZTF18aakrnvd", "ZTF18aamftst", "ZTF18aarasof", "ZTF18aauenwu", "ZTF18aavskep", "ZTF18aaxjuwy", "ZTF18aaxxfgs", "ZTF18ablqehq", "ZTF18abltfho", "ZTF18abtswjk", "ZTF18abucxcj", "ZTF18abvgjgb", "ZTF18abxbhov", "ZTF18acbwvsp", "ZTF18accdzju", "ZTF18accnfrz", "ZTF18acjpret", "ZTF18acpsrtc", "ZTF18acsulmu", "ZTF18acvgjqv", "ZTF18acwzyor", "ZTF18aczuooo", "ZTF18adbmrug", "ZTF19aacjbsj", "ZTF19aadgimr", "ZTF19aaerbzy", "ZTF19aaezale", "ZTF19aaksxgp", "ZTF19aamkmxv", "ZTF19aanfqug", "ZTF19aanqzhm", "ZTF19aaozsuh", "ZTF19aapzbjr", "ZTF19aaqasrq", "ZTF19aarxrem", "ZTF19aasekcx", "ZTF19aavjukt", "ZTF19aavyvbn", "ZTF19aaxeaag", "ZTF19abandzh", "ZTF19abcejfo", "ZTF19abdviwl", "ZTF19abecaca", "ZTF19abegxfs", "ZTF19abgndlf", "ZTF19abirfmc", "ZTF19abiszoe", "ZTF19abjacdu", "ZTF19ablojrw", "ZTF19ablzora", "ZTF19abpidqn", "ZTF19abstsvm", "ZTF19abulzhy", "ZTF19abzmmvz", "ZTF19abzpvaj", "ZTF19acapech", "ZTF19aceqlxc", "ZTF19acftude", "ZTF19acjutrw", "ZTF19ackbclh", "ZTF19actabny", "ZTF19acukucu", "ZTF19acvkibv", "ZTF19acxmnkc", "ZTF19acxqaot", "ZTF19acyjviz", "ZTF19acyjysk", "ZTF19acykaae", "ZTF19acyldun", "ZTF19adalarj", "ZTF19adannbl", "ZTF20aaaddgy", "ZTF20aaaweke", "ZTF20aabcemq", "ZTF20aacbyec", "ZTF20aadtarr", "ZTF20aadxrvb", "ZTF20aadyyvk", "ZTF20aahapgw", "ZTF20aajvyja", "ZTF20aammdfk", "ZTF20aamrreb", "ZTF20aartnkv", "ZTF20aasivpe", "ZTF20aaswzdm", "ZTF20aattztb", "ZTF20aaurfwa", "ZTF20aavhixe", "ZTF20aawijco", "ZTF20aayvmyh", "ZTF20aazffau", "ZTF20abonvte", "ZTF20abpmqnr", "ZTF20abqgbum", "ZTF20abtjjhb", "ZTF20abyxjvm", "ZTF20abzjoxd", "ZTF20acbekkx", "ZTF20aceokvr", "ZTF20acggqfs", "ZTF20acghodf", "ZTF20achjwqt", "ZTF20acklcyp", "ZTF20aclkvjy", "ZTF20acnvniw", "ZTF20acoawtj", "ZTF20acounxo", "ZTF20acqgklx", "ZTF20acqnfzn", "ZTF20acqqdkl", "ZTF20actkulc", "ZTF20acusylb", "ZTF20acveyyv", "ZTF20acwobku", "ZTF20acxmxtu", "ZTF20aczgmai", "ZTF21aaabxbd", "ZTF21aaffxdt", "ZTF21aagnqnz", "ZTF21aahfjrr", "ZTF21aakupth", "ZTF21aaoqbbw", "ZTF21aaowaxx", "ZTF21aappkns", "ZTF21aaqhqke", "ZTF21aaradzm", "ZTF21aarcobt", "ZTF21aatwkkg", "ZTF21aautijg", "ZTF21aavuqzr", "ZTF21aaxtije", "ZTF21aaydxoo", "ZTF21aaygmrl", "ZTF21aazgkjf", "ZTF21abccdld", "ZTF21abebgfr", "ZTF21abghumo", "ZTF21abgjldn", "ZTF21abgzyvg", "ZTF21abhibro", "ZTF21abhqqfa", "ZTF21abiwpjm", "ZTF21abjhiqp", "ZTF21abjvukz", "ZTF21abpmlxu", "ZTF21abpxquj", "ZTF21abtdvpg", "ZTF21abtorlk", "ZTF21abujgmr", "ZTF21abulpnc", "ZTF21abxlmuw", "ZTF21abxtfwo", "ZTF21accgsbf", "ZTF21acckcni", "ZTF21acpkzcc", "ZTF21acpoujw", "ZTF22aaabzju", "ZTF22aaajbnz", "ZTF22aabwemz", "ZTF22aabxuxf", "ZTF22aadesjc", "ZTF22aaetqzk", "ZTF22aafnzvd", "ZTF22aagvtzz", "ZTF22aagvxjc", "ZTF22aahedwz", "ZTF22aajcupz", "ZTF22aajjojx", "ZTF22aanesux", "ZTF22aanjyae", "ZTF22aanwibf", "ZTF22aaohilj", "ZTF22aapkbkl", "ZTF22aapmawo", "ZTF22aarrawv", "ZTF22aasoali", "ZTF22aasudqv", "ZTF22aatfjcy", "ZTF22aawfeov", "ZTF22aazbxmi", "ZTF22abajyqm", "ZTF22abcesfo", "ZTF22abeyzcl", "ZTF22abfnfud", "ZTF22abfyvhf", "ZTF22abghrui", "ZTF22abhclyh", "ZTF22abhwlnm", "ZTF22abiupzw", "ZTF22abizuah", "ZTF22abnfjsm", "ZTF22abqseiq", "ZTF22abtcpig", "ZTF22abtsypf", "ZTF22abxltfq", "ZTF22abzgbtq", "ZTF23aaabzea", "ZTF23aaakein", "ZTF23aaarwbd", "ZTF23aaavyag", "ZTF23aablgzj", "ZTF23aabvcmb", "ZTF23aaczpkm", "ZTF23aaczunw", "ZTF23aadchqd", "ZTF23aadtvmb", "ZTF23aaecexq", "ZTF23aajjzbm", "ZTF23aajkisd", "ZTF23aalgqsq", "ZTF23aamanim", "ZTF23aamshoi", "ZTF23aansdlc", "ZTF23aaohqcn", "ZTF23aapsuva", "ZTF23aaqmauw", "ZTF23aaquolj", "ZTF23aatdcey", "ZTF23aavmthe", "ZTF23aavvckk", "ZTF23aaxldkr", "ZTF23aayngri", "ZTF23abfglcy", "ZTF23abgnxri", "ZTF23abjhwem", "ZTF23abjikaf", "ZTF23abjvuwc", "ZTF23abkhwgb", "ZTF23abkphfu", "ZTF23ablutgq", "ZTF23abomtge", "ZTF23abpznvm", "ZTF23abqimmw", "ZTF23abqrshk", "ZTF23abrydus", "ZTF23absdibx", "ZTF24aaabljq", "ZTF24aaejwvu", "ZTF24aaennqr", "ZTF24aaerzgz", "ZTF24aafqxmg"]     
 
 # ATLAS data
 
@@ -216,8 +249,7 @@ atlas_id_sn_Ia_CSM = np.loadtxt("Data/ATLAS_ID_SNe_Ia_CSM", delimiter = ",", dty
 atlas_id_sn_IIn = np.loadtxt("Data/ATLAS_ID_SNe_IIn", delimiter = ",", dtype = "str")
 
 atlas_id = np.concatenate((atlas_id_sn_Ia_CSM, atlas_id_sn_IIn))
-atlas_types = np.concatenate((np.zeros(len(atlas_id_sn_Ia_CSM)), np.ones(len(atlas_id_sn_IIn))))
-discovery_dates = data = np.loadtxt("Data/ATLAS_data/sninfo.txt", skiprows = 1, usecols = (0, 3), dtype = "str")
+discovery_dates = np.loadtxt("Data/OLD_ATLAS_data/sninfo.txt", skiprows = 1, usecols = (0, 3), dtype = "str")
 
 # %%
 
@@ -245,7 +277,7 @@ def OLD_plot_ztf_data(ztf_id, time_g, flux_g, fluxerr_g, time_r, flux_r, fluxerr
         plt.show()
 
 
-def get_magnitud_extinction(magnitude, ra, dec, wavelength):
+def get_magnitude_extinction(magnitude, ra, dec, wavelength):
 
     
     sfd = SFDQuery()
@@ -260,127 +292,149 @@ def get_magnitud_extinction(magnitude, ra, dec, wavelength):
 
     return magnitude - delta_mag
 
-def data_processing():
+def data_processing(survey, SN_names):
 
     r_wavelength = 6173.23
     g_wavelength = 4741.64
 
-    for SN_id in ztf_id:
+    for SN_id in SN_names:
 
-        ra, dec, time_r, mag_r, magerr_r, time_g, mag_g, magerr_g = retrieve_ztf_data(SN_id)
+        print(SN_id)
 
-        mag_r = get_magnitud_extinction(mag_r, ra, dec, r_wavelength)
-        mag_g = get_magnitud_extinction(mag_g, ra, dec, g_wavelength)
+        if survey == "ZTF":
+            filter_1 = "r"
+            filter_2 = "g"
 
-        flux_g, fluxerr_g = ztf_magnitude_to_micro_flux(mag_g, magerr_g)
-        flux_r, fluxerr_r = ztf_magnitude_to_micro_flux(mag_r, magerr_r)
+            try:
+                ra, dec, time_f1, mag_f1, magerr_f1, time_f2, mag_f2, magerr_f2 = retrieve_ztf_data(SN_id)
+            
+            except AttributeError:
+                print("Coud not find", SN_id)
+                continue
+
+            mag_f1 = get_magnitude_extinction(mag_f1, ra, dec, r_wavelength)
+            mag_f2 = get_magnitude_extinction(mag_f2, ra, dec, g_wavelength)
+
+            flux_f1, fluxerr_f1 = ztf_magnitude_to_micro_flux(mag_f1, magerr_f1)
+            flux_f2, fluxerr_f2 = ztf_magnitude_to_micro_flux(mag_f2, magerr_f2)
+
+        elif survey == "ATLAS":
+            filter_1 = "o"
+            filter_2 = "c"
+
+            time_f1, flux_f1, fluxerr_f1 = retrieve_atlas_data(SN_id, discovery_dates, "o")
+            time_f2, flux_f2, fluxerr_f2 = retrieve_atlas_data(SN_id, discovery_dates, "c")
 
         # Light curve clipping 
         
-        if len(time_g) != 0:
-            peak_idx_g =  0
+        if len(time_f2) != 0:
+            peak_idx_f2 =  0
 
-            if len(time_g) > 5:
-                while (flux_g[peak_idx_g] < flux_g[peak_idx_g + 1 : peak_idx_g + 3]).all():
-                    peak_idx_g += 1
+            if len(time_f2) > 5:
+                while (flux_f2[peak_idx_f2] < flux_f2[peak_idx_f2 + 1 : peak_idx_f2 + 3]).all():
+                    peak_idx_f2 += 1
             else:
-                peak_idx_g = np.argmax(flux_g)
+                peak_idx_f2 = np.argmax(flux_f2)
 
-            end_idx_g = len(time_g) - peak_idx_g
-            pts_to_delete_g = 0
+            end_idx_f2 = len(time_f2) - peak_idx_f2
+            pts_to_delete_f2 = 0
 
-            if peak_idx_g != len(time_g) - 1:
+            if peak_idx_f2 != len(time_f2) - 1:
 
-                peak_slope_g = (flux_g[-1] - flux_g[peak_idx_g])/(time_g[-1] - time_g[peak_idx_g])
+                peak_slope_f2 = (flux_f2[-1] - flux_f2[peak_idx_f2])/(time_f2[-1] - time_f2[peak_idx_f2])
 
-                for idx in range(2, end_idx_g):
+                for idx in range(2, end_idx_f2):
 
-                    last_idx_g = -1 * idx
-                    slope_g = (flux_g[last_idx_g] - flux_g[-1])/(time_g[last_idx_g] - time_g[-1])
+                    last_idx_f2 = -1 * idx
+                    slope_f2 = (flux_f2[last_idx_f2] - flux_f2[-1])/(time_f2[last_idx_f2] - time_f2[-1])
 
-                    if np.abs(slope_g) < 0.2 * np.abs(peak_slope_g):
-                        pts_to_delete_g = idx
+                    if np.abs(slope_f2) < 0.2 * np.abs(peak_slope_f2):
+                        pts_to_delete_f2 = idx
 
-                if pts_to_delete_g > 0:
+                if pts_to_delete_f2 > 0:
 
-                    time_g = time_g[: -pts_to_delete_g]
-                    flux_g = flux_g[: -pts_to_delete_g]
-                    fluxerr_g = fluxerr_g[: -pts_to_delete_g]
+                    time_f2 = time_f2[: -pts_to_delete_f2]
+                    flux_f2 = flux_f2[: -pts_to_delete_f2]
+                    fluxerr_f2 = fluxerr_f2[: -pts_to_delete_f2]
         
-        if len(time_r) != 0:
-            peak_idx_r =  0
+        if len(time_f1) != 0:
+            peak_idx_f1 =  0
 
-            if len(time_r) > 5:
-                while (flux_r[peak_idx_r] < flux_r[peak_idx_r + 1 : peak_idx_r + 3]).all():
-                    peak_idx_r += 1
+            if len(time_f1) > 5:
+                while (flux_f1[peak_idx_f1] < flux_f1[peak_idx_f1 + 1 : peak_idx_f1 + 3]).all():
+                    peak_idx_f1 += 1
             else:
-                peak_idx_r = np.argmax(flux_r)
+                peak_idx_f1 = np.argmax(flux_f1)
 
-            end_idx_r = len(time_r) - peak_idx_r
-            pts_to_delete_r = 0
+            end_idx_f1 = len(time_f1) - peak_idx_f1
+            pts_to_delete_f1 = 0
 
-            if peak_idx_r != len(time_r) - 1:
+            if peak_idx_f1 != len(time_f1) - 1:
 
-                peak_slope_r = (flux_r[-1] - flux_r[peak_idx_r])/(time_r[-1] - time_r[peak_idx_r])
+                peak_slope_f1 = (flux_f1[-1] - flux_f1[peak_idx_f1])/(time_f1[-1] - time_f1[peak_idx_f1])
 
-                for idx in range(2, end_idx_r):
+                for idx in range(2, end_idx_f1):
 
-                    last_idx_r = -1 * idx
-                    slope_r = (flux_r[last_idx_r] - flux_r[-1])/(time_r[last_idx_r] - time_r[-1])
+                    last_idx_f1 = -1 * idx
+                    slope_f1 = (flux_f1[last_idx_f1] - flux_f1[-1])/(time_f1[last_idx_f1] - time_f1[-1])
 
-                    if np.abs(slope_r) < 0.2 * np.abs(peak_slope_r):
-                        pts_to_delete_r = idx
+                    if np.abs(slope_f1) < 0.2 * np.abs(peak_slope_f1):
+                        pts_to_delete_f1 = idx
 
-                if pts_to_delete_r > 0:
+                if pts_to_delete_f1 > 0:
 
-                    time_r = time_r[: -pts_to_delete_r]
-                    flux_r = flux_r[: -pts_to_delete_r]
-                    fluxerr_r = fluxerr_r[: -pts_to_delete_r]
+                    time_f1 = time_f1[: -pts_to_delete_f1]
+                    flux_f1 = flux_f1[: -pts_to_delete_f1]
+                    fluxerr_f1 = fluxerr_f1[: -pts_to_delete_f1]
 
         # Signal-to-noise and Brightness variability
-        if len(time_g) != 0:
-            SNR_g = flux_g / fluxerr_g
-            good_SNR_g = np.where(SNR_g > 3)[0]
+        if len(time_f2) != 0:
+            SNR_f2 = flux_f2 / fluxerr_f2
+            good_SNR_f2 = np.where(SNR_f2 > 3)[0]
 
-            max_flux_g = np.max(flux_g) - np.min(flux_g)
-            mean_fluxerr_g = np.mean(fluxerr_g)
+            max_flux_f2 = np.max(flux_f2) - np.min(flux_f2)
+            mean_fluxerr_f2 = np.mean(fluxerr_f2)
 
-            std_flux_g = np.std(flux_g)
+            std_flux_f2 = np.std(flux_f2)
 
-            if (((len(good_SNR_g) or len(time_g)) < 5) or (max_flux_g < 3. * mean_fluxerr_g)) or (std_flux_g < mean_fluxerr_g):
-                time_g = []
-                flux_g = []
-                fluxerr_g = []
+            if (((len(good_SNR_f2) or len(time_f2)) < 5) or (max_flux_f2 < 3. * mean_fluxerr_f2)) or (std_flux_f2 < mean_fluxerr_f2):
+                time_f2 = []
+                flux_f2 = []
+                fluxerr_f2 = []
 
-        if len(time_r) != 0:
-            SNR_r = flux_r / fluxerr_r
-            good_SNR_r = np.where(SNR_r > 3)[0]
+        if len(time_f1) != 0:
+            SNR_f1 = flux_f1 / fluxerr_f1
+            good_SNR_f1 = np.where(SNR_f1 > 3)[0]
 
-            max_flux_r = np.max(flux_r) - np.min(flux_r)
-            mean_fluxerr_r = np.mean(fluxerr_r)
+            max_flux_f1 = np.max(flux_f1) - np.min(flux_f1)
+            mean_fluxerr_f1 = np.mean(fluxerr_f1)
 
-            std_flux_r = np.std(flux_r)
+            std_flux_f1 = np.std(flux_f1)
 
-            if (((len(good_SNR_r) or len(time_r)) < 5) or (max_flux_r < 3. * np.mean(fluxerr_r))) or (std_flux_r < np.mean(fluxerr_r)):
-                time_r = []
-                flux_r = []
-                fluxerr_r = []
+            if (((len(good_SNR_f1) or len(time_f1)) < 5) or (max_flux_f1 < 3. * mean_fluxerr_f1)) or (std_flux_f1 < mean_fluxerr_f1):
+                time_f1 = []
+                flux_f1 = []
+                fluxerr_f1 = []
 
-        if len(time_g) > 0 or len(time_r) > 0:
-            OLD_plot_ztf_data(SN_id, time_g, flux_g, fluxerr_g, time_r, flux_r, fluxerr_r, save_fig = True)
+        if len(time_f2) > 0 or len(time_f1) > 0:
+            if survey == "ZTF":
+                OLD_plot_ztf_data(SN_id, time_f2, flux_f2, fluxerr_f2, time_f1, flux_f1, fluxerr_f1, save_fig = True)
 
-        if len(time_g) > 0:
+            elif survey == "ATLAS":
+                plot_atlas_data(SN_id, time_f2, flux_f2, fluxerr_f2, time_f1, flux_f1, fluxerr_f1, save_fig = True)
 
-            SN_data_g = np.stack((time_g, flux_g, fluxerr_g))
+        if len(time_f2) > 0:
 
-            os.makedirs(f"Data/ZTF_data/{SN_id}/g/", exist_ok = True)
-            np.save(f"Data/ZTF_data/{SN_id}/g/", SN_data_g)
+            SN_data_f2 = np.stack((time_f2, flux_f2, fluxerr_f2))
 
-        if len(time_r) > 0:
-            SN_data_r = np.stack((time_r, flux_r, fluxerr_r))
+            os.makedirs(f"Data/{survey}_data/{SN_id}/{filter_2}/", exist_ok = True)
+            np.save(f"Data/{survey}_data/{SN_id}/{filter_2}/", SN_data_f2)
 
-            os.makedirs(f"Data/ZTF_data/{SN_id}/r/", exist_ok = True)
-            np.save(f"Data/ZTF_data/{SN_id}/r/", SN_data_r)
+        if len(time_f1) > 0:
+            SN_data_f1 = np.stack((time_f1, flux_f1, fluxerr_f1))
+
+            os.makedirs(f"Data/{survey}_data/{SN_id}/{filter_1}/", exist_ok = True)
+            np.save(f"Data/{survey}_data/{SN_id}/{filter_1}/", SN_data_f1)
 
 # %%
 
@@ -401,24 +455,24 @@ def test():
 
     atlas_id = np.concatenate((atlas_id_sn_Ia_CSM, atlas_id_sn_IIn))
     atlas_types = np.concatenate((np.zeros(len(atlas_id_sn_Ia_CSM)), np.ones(len(atlas_id_sn_IIn))))
-    discovery_dates = data = np.loadtxt("Data/ATLAS_data/sninfo.txt", skiprows = 1, usecols = (0, 3), dtype = "str")
+    discovery_dates = np.loadtxt("Data/OLD_ATLAS_data/sninfo.txt", skiprows = 1, usecols = (0, 3), dtype = "str")
 
     # ZTF 
-    for SN_id in ztf_id:
+    # for SN_id in ztf_id:
 
-        time_g, mag_g, magerr_g = retrieve_ztf_data(SN_id, "g")
-        time_r, mag_r, magerr_r = retrieve_ztf_data(SN_id, "R")
+    #     time_g, mag_g, magerr_g = retrieve_ztf_data(SN_id, "g")
+    #     time_r, mag_r, magerr_r = retrieve_ztf_data(SN_id, "R")
 
-        flux_g, fluxerr_g = ztf_magnitude_to_micro_flux(mag_g, magerr_g)
-        flux_r, fluxerr_r = ztf_magnitude_to_micro_flux(mag_r, magerr_r)
+    #     flux_g, fluxerr_g = ztf_magnitude_to_micro_flux(mag_g, magerr_g)
+    #     flux_r, fluxerr_r = ztf_magnitude_to_micro_flux(mag_r, magerr_r)
 
-        plot_ztf_data(SN_id, time_g, flux_g, fluxerr_g, time_r, flux_r, fluxerr_r, save_fig = True)
+        # plot_ztf_data(SN_id, time_g, flux_g, fluxerr_g, time_r, flux_r, fluxerr_r, save_fig = True)
 
     # ATLAS
-    # time_c, flux_c, fluxerr_c = retrieve_atlas_data("SN_IIn", atlas_id_sn_Ia_CSM[3], discovery_dates, "c")
-    # time_o, flux_o, fluxerr_o = retrieve_atlas_data("SN_IIn", atlas_id_sn_Ia_CSM[3], discovery_dates, "o")
+    time_c, flux_c, fluxerr_c = retrieve_atlas_data("SN_IIn", atlas_id_sn_Ia_CSM[3], discovery_dates, "c")
+    time_o, flux_o, fluxerr_o = retrieve_atlas_data("SN_IIn", atlas_id_sn_Ia_CSM[3], discovery_dates, "o")
 
-    # plot_atlas_data(atlas_id_sn_Ia_CSM[3], time_c, flux_c, fluxerr_c, time_o, flux_o, fluxerr_o)
+    plot_atlas_data(atlas_id_sn_Ia_CSM[3], time_c, flux_c, fluxerr_c, time_o, flux_o, fluxerr_o)
 
     # Data augmentation
     # time, flux, fluxerr, passbands, passband2lam, augmentation = data_augmentation("ATLAS", time_c, flux_c, fluxerr_c,
@@ -468,6 +522,22 @@ def test():
 # %%
     
 if __name__ == '__main__':
-    test()
+    # test()
+    data_processing("ATLAS", atlas_id)
 
+# %%
+
+# # Define the array of elements (directory names)
+
+# # Define the path to the text file where the directory names will be stored
+# output_file = 'Data/ZTF_ID_SNe_IIn'
+
+# # Open the file in append mode
+# with open(output_file, 'a') as file:
+#     # Loop through each element in the array
+#     for SN_id in ztf_id_sn_IIn:
+#         # Check if the directory exists
+#         if os.path.isdir(f"Data/ZTF_data/{SN_id}"):
+#             # If it exists, write the directory name to the text file
+#             file.write(SN_id + '\n')
 # %%

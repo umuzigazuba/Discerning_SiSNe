@@ -1,6 +1,6 @@
 # %%
 
-from data_processing import load_ztf_data
+from data_processing import load_ztf_data, ztf_micro_flux_to_magnitude
 from parameter_estimation import light_curve_one_peak, light_curve_two_peaks
 
 # from sklearn.preprocessing import LabelEncoder
@@ -19,8 +19,6 @@ import csv
 
 plt.rcParams["text.usetex"] = True
 
-np.random.seed(2804)
-
 # %%
 
 # Load light curve data points 
@@ -31,6 +29,7 @@ ztf_id = np.concatenate((ztf_id_sn_Ia_CSM, ztf_id_sn_IIn))
 ztf_label = np.array(["SN Ia CSM"] * len(ztf_id_sn_Ia_CSM) + ["SN IIn"] * len(ztf_id_sn_IIn))
 
 ####################################################################
+
 # %%
 
 # Retrieve parameters 
@@ -183,11 +182,11 @@ def plot_distribution(parameter_values_Ia, parameter_values_II, survey, filter, 
         max_bin = np.max(np.concatenate((parameter_values_Ia[:, idx_1], parameter_values_II[:, idx_1])))
         bins = np.linspace(min_bin, max_bin, 25)
 
-        plt.hist(parameter_values_Ia[:, idx_1], bins = bins, density = True, linewidth = 2, color = "tab:orange", histtype = "bar", alpha = 0.4, zorder = 10)
-        plt.hist(parameter_values_II[:, idx_1], bins = bins, density = True, linewidth = 2, color = "tab:blue", histtype = "bar", alpha = 0.4, zorder = 5)
+        plt.hist(parameter_values_Ia[:, idx_1], bins = bins, linewidth = 2, color = "tab:orange", histtype = "bar", alpha = 0.4, zorder = 10)
+        plt.hist(parameter_values_II[:, idx_1], bins = bins, linewidth = 2, color = "tab:blue", histtype = "bar", alpha = 0.4, zorder = 5)
 
-        plt.hist(parameter_values_Ia[:, idx_1], bins = bins, density = True, linewidth = 2, color = "tab:orange", histtype = "step",  fill = False, label = "SNe Ia-CSM", zorder = 10)
-        plt.hist(parameter_values_II[:, idx_1], bins = bins, density = True, linewidth = 2, color = "tab:blue", histtype = "step", fill = False, label = "SNe IIn", zorder = 5)
+        plt.hist(parameter_values_Ia[:, idx_1], bins = bins, linewidth = 2, color = "tab:orange", histtype = "step",  fill = False, label = "SNe Ia-CSM", zorder = 10)
+        plt.hist(parameter_values_II[:, idx_1], bins = bins, linewidth = 2, color = "tab:blue", histtype = "step", fill = False, label = "SNe IIn", zorder = 5)
 
         plt.xlabel(parameters[idx_1], fontsize = 13)
         plt.ylabel("N", fontsize = 13)
@@ -232,7 +231,7 @@ plot_correlation_contour(parameters_one_peak_Ia[:, 8:14], parameters_one_peak_II
 plot_distribution(parameters_one_peak_Ia[:, 1:7], parameters_one_peak_II[:, 1:7], "ZTF", "r", parameters)
 plot_distribution(parameters_one_peak_Ia[:, 8:14], parameters_one_peak_II[:, 8:14], "ZTF", "g", parameters)
 
-# %%
+ # %%
 
 # transformed_parameters_one_peak_Ia = np.array([transform_data(parameters_one_peak_Ia[idx, 0], "ZTF", parameters_one_peak_Ia[idx, 1:]) for idx in range(len(parameters_one_peak_Ia))])
 # transformed_parameters_one_peak_II = np.array([transform_data(parameters_one_peak_II[idx, 0], "ZTF", parameters_one_peak_II[idx, 1:]) for idx in range(len(parameters_one_peak_II))])
@@ -247,6 +246,71 @@ plot_distribution(parameters_one_peak_Ia[:, 8:14], parameters_one_peak_II[:, 8:1
 # plot_distribution(transformed_parameters_one_peak_Ia[:, 1:7], transformed_parameters_one_peak_II[:, 1:7], "ZTF", "r", parameters)
 # plot_distribution(transformed_parameters_one_peak_Ia[:, 8:14], transformed_parameters_one_peak_II[:, 8:14], "ZTF", "g", parameters)
 
+# %%
+
+np.where(parameters_OP_II[:, 0] == "ZTF22aasoali")
+# %%
+
+SN_id =  "ZTF22aasoali"
+f1 = "r"
+f2 = "g"
+
+time, flux, _, filters = load_ztf_data(SN_id)
+
+f1_values = np.where(filters == f1)
+f2_values = np.where(filters == f2)
+
+# Shift the light curve so that the main peak is at time = 0 MJD
+if f1 in filters:
+    peak_main_idx = np.argmax(flux[f1_values])
+    peak_time = np.copy(time[peak_main_idx])
+    peak_flux = np.copy(flux[peak_main_idx])
+
+else: 
+    # If there is only data in the g-band, the g-band becomes the main band 
+    peak_main_idx = np.argmax(flux[f2_values])
+    peak_time = np.copy(time[peak_main_idx])
+    peak_flux = np.copy(flux[peak_main_idx])
+
+time -= peak_time
+
+amount_fit = 200
+time_fit = np.concatenate((np.linspace(time.min(), time.max(), amount_fit), np.linspace(time.min(), time.max(), amount_fit)))
+f1_values_fit = np.arange(amount_fit)
+f2_values_fit = np.arange(amount_fit) + amount_fit
+
+flux_fit = light_curve_one_peak(time_fit, parameters_OP_II[141, 1:], peak_flux, f1_values_fit, f2_values_fit)
+
+magnitude_fit = ztf_micro_flux_to_magnitude(flux_fit)
+
+time_fit += peak_time
+
+if len(f2_values) != 0:
+    peak_fit_idx_f2 = np.argmax(flux_fit[f2_values_fit]) + amount_fit
+    peak_time_fit_f2 = np.copy(time_fit[peak_fit_idx_f2])
+    peak_flux_fit_f2 = np.copy(flux_fit[peak_fit_idx_f2])
+    time_fit_f2 = time_fit - peak_time_fit_f2
+
+    peak_magnitude_f2 = magnitude_fit[peak_fit_idx_f2]
+
+    thirty_days_after_peak_f2 = np.argmin(np.abs(time_fit_f2[f2_values_fit] - 30)) + amount_fit
+    thirty_days_magnitude_f2 = magnitude_fit[thirty_days_after_peak_f2]
+    thirty_days_magnitude_difference_f2 = peak_magnitude_f2 - thirty_days_magnitude_f2
+
+    half_peak_flux_f2 = np.argmin(np.abs(flux_fit[f2_values_fit][(peak_fit_idx_f2 - amount_fit):] - peak_flux_fit_f2 * 0.5)) + peak_fit_idx_f2
+    half_peak_time_f2 = time_fit_f2[half_peak_flux_f2]
+
+    fifth_peak_flux_f2 = np.argmin(np.abs(flux_fit[f2_values_fit][(peak_fit_idx_f2 - amount_fit):] - peak_flux_fit_f2 * 0.2)) + peak_fit_idx_f2
+    fifth_peak_time_f2 = time_fit_f2[fifth_peak_flux_f2]
+    
+plt.plot(time_fit[f2_values_fit], flux_fit[f2_values_fit])
+plt.scatter(time_fit[peak_fit_idx_f2], flux_fit[peak_fit_idx_f2])
+plt.scatter(time_fit[thirty_days_after_peak_f2], flux_fit[thirty_days_after_peak_f2])
+plt.scatter(time_fit[half_peak_flux_f2], flux_fit[half_peak_flux_f2])
+plt.scatter(time_fit[fifth_peak_flux_f2], flux_fit[fifth_peak_flux_f2])
+plt.show()
+
+print(half_peak_time_f2)
 ####################################################################
 # %%
 
@@ -286,54 +350,142 @@ def retrieve_global_parameters(SN_id, survey, peak_number, parameter_values):
     elif peak_number == 2:
         flux_fit = light_curve_two_peaks(time_fit, parameter_values, peak_flux, f1_values_fit, f2_values_fit)
 
+    magnitude_fit = ztf_micro_flux_to_magnitude(flux_fit)
+
+    time_fit += peak_time
+
     if len(f1_values) != 0:
-        peak_flux_f1 = np.max(flux_fit[f1_values_fit])
+        peak_fit_idx_f1 = np.argmax(flux_fit[f1_values_fit])
+        peak_time_fit_f1 = np.copy(time_fit[peak_fit_idx_f1])
+        peak_flux_fit_f1 = np.copy(flux_fit[peak_fit_idx_f1])
+        time_fit_f1 = time_fit - peak_time_fit_f1
+
+        peak_magnitude_f1 = magnitude_fit[peak_fit_idx_f1]
+
+        thirty_days_after_peak_f1 = np.argmin(np.abs(time_fit_f1[f1_values_fit] - 30))
+        thirty_days_magnitude_f1 = magnitude_fit[thirty_days_after_peak_f1]
+        thirty_days_magnitude_difference_f1 = peak_magnitude_f1 - thirty_days_magnitude_f1
+
+        half_peak_flux_f1 = np.argmin(np.abs(flux_fit[f1_values_fit][peak_fit_idx_f1:] - peak_flux_fit_f1 * 0.5)) + peak_fit_idx_f1
+        half_peak_time_f1 = time_fit_f1[half_peak_flux_f1]
+
+        fifth_peak_flux_f1 = np.argmin(np.abs(flux_fit[f1_values_fit][peak_fit_idx_f1:] - peak_flux_fit_f1 * 0.2)) + peak_fit_idx_f1
+        fifth_peak_time_f1 = time_fit_f1[fifth_peak_flux_f1]
 
     else:
-        peak_flux_f1 = np.nan
+        peak_magnitude_f1 = np.nan
+        thirty_days_magnitude_difference_f1 = np.nan
+        half_peak_time_f1 = np.nan
+        fifth_peak_time_f1 = np.nan
 
     if len(f2_values) != 0:
-        peak_flux_f2 = np.max(flux_fit[f2_values_fit])
+        peak_fit_idx_f2 = np.argmax(flux_fit[f2_values_fit]) + amount_fit
+        peak_time_fit_f2 = np.copy(time_fit[peak_fit_idx_f2])
+        peak_flux_fit_f2 = np.copy(flux_fit[peak_fit_idx_f2])
+        time_fit_f2 = time_fit - peak_time_fit_f2
+
+        peak_magnitude_f2 = magnitude_fit[peak_fit_idx_f2]
+
+        thirty_days_after_peak_f2 = np.argmin(np.abs(time_fit_f2[f2_values_fit] - 30)) + amount_fit
+        thirty_days_magnitude_f2 = magnitude_fit[thirty_days_after_peak_f2]
+        thirty_days_magnitude_difference_f2 = peak_magnitude_f2 - thirty_days_magnitude_f2
+
+        half_peak_flux_f2 = np.argmin(np.abs(flux_fit[f2_values_fit][(peak_fit_idx_f2 - amount_fit):] - peak_flux_fit_f2 * 0.5)) + peak_fit_idx_f2
+        half_peak_time_f2 = time_fit_f2[half_peak_flux_f2]
+
+        fifth_peak_flux_f2 = np.argmin(np.abs(flux_fit[f2_values_fit][(peak_fit_idx_f2 - amount_fit):] - peak_flux_fit_f2 * 0.2)) + peak_fit_idx_f2
+        fifth_peak_time_f2 = time_fit_f2[fifth_peak_flux_f2]
 
     else:
-        peak_flux_f2 = np.nan
+        peak_magnitude_f2 = np.nan
+        thirty_days_magnitude_difference_f2 = np.nan
+        half_peak_time_f2 = np.nan
+        fifth_peak_time_f2 = np.nan
 
-    return np.array([peak_flux_f1, peak_flux_f2])
+    return np.array([peak_magnitude_f1, peak_magnitude_f2]), \
+           np.array([thirty_days_magnitude_difference_f1, thirty_days_magnitude_difference_f2]), \
+           np.array([half_peak_time_f1, half_peak_time_f2]), \
+           np.array([fifth_peak_time_f1, fifth_peak_time_f2])
             
 
 # %%
 
-peak_flux_OP_Ia = np.empty((0,2))
+peak_magnitude_OP_Ia = np.empty((0,2))
+thirty_days_magnitude_difference_OP_Ia = np.empty((0,2))
+half_peak_time_OP_Ia = np.empty((0,2))
+fifth_peak_time_OP_Ia = np.empty((0,2))
 
 for id, SN_id in enumerate(parameters_OP_Ia[:, 0]):
 
-    peak_flux = retrieve_global_parameters(SN_id, "ZTF", 1, parameters_OP_Ia[id, 1:])
-    peak_flux_OP_Ia = np.append(peak_flux_OP_Ia, [peak_flux], axis = 0)
+    peak_magnitude, thirty_days_magnitude_difference, half_peak_time, fifth_peak_time = retrieve_global_parameters(SN_id, "ZTF", 1, parameters_OP_Ia[id, 1:])
+    
+    peak_magnitude_OP_Ia = np.append(peak_magnitude_OP_Ia, [peak_magnitude], axis = 0)
+    thirty_days_magnitude_difference_OP_Ia = np.append(thirty_days_magnitude_difference_OP_Ia, [thirty_days_magnitude_difference], axis = 0)
+    half_peak_time_OP_Ia = np.append(half_peak_time_OP_Ia, [half_peak_time], axis = 0)
+    fifth_peak_time_OP_Ia = np.append(fifth_peak_time_OP_Ia, [fifth_peak_time], axis = 0)
 
-peak_flux_OP_II = np.empty((0,2))
+peak_magnitude_OP_II = np.empty((0,2))
+thirty_days_magnitude_difference_OP_II = np.empty((0,2))
+half_peak_time_OP_II = np.empty((0,2))
+fifth_peak_time_OP_II = np.empty((0,2))
 
 for id, SN_id in enumerate(parameters_OP_II[:, 0]):
 
-    peak_flux = retrieve_global_parameters(SN_id, "ZTF", 1, parameters_OP_II[id, 1:])
-    peak_flux_OP_II = np.append(peak_flux_OP_II, [peak_flux], axis = 0)
+    peak_magnitude, thirty_days_magnitude_difference, half_peak_time, fifth_peak_time = retrieve_global_parameters(SN_id, "ZTF", 1, parameters_OP_II[id, 1:])
+    
+    peak_magnitude_OP_II = np.append(peak_magnitude_OP_II, [peak_magnitude], axis = 0)
+    thirty_days_magnitude_difference_OP_II = np.append(thirty_days_magnitude_difference_OP_II, [thirty_days_magnitude_difference], axis = 0)
+    half_peak_time_OP_II = np.append(half_peak_time_OP_II, [half_peak_time], axis = 0)
+    fifth_peak_time_OP_II = np.append(fifth_peak_time_OP_II, [fifth_peak_time], axis = 0)
 
-peak_flux_TP_Ia = np.empty((0,2))
+peak_magnitude_TP_Ia = np.empty((0,2))
+thirty_days_magnitude_difference_TP_Ia = np.empty((0,2))
+half_peak_time_TP_Ia = np.empty((0,2))
+fifth_peak_time_TP_Ia = np.empty((0,2))
 
 for id, SN_id in enumerate(parameters_TP_Ia[:, 0]):
 
-    peak_flux = retrieve_global_parameters(SN_id, "ZTF", 1, parameters_TP_Ia[id, 1:])
-    peak_flux_TP_Ia = np.append(peak_flux_TP_Ia, [peak_flux], axis = 0)
+    peak_magnitude, thirty_days_magnitude_difference, half_peak_time, fifth_peak_time = retrieve_global_parameters(SN_id, "ZTF", 1, parameters_TP_Ia[id, 1:])
+    
+    peak_magnitude_TP_Ia = np.append(peak_magnitude_TP_Ia, [peak_magnitude], axis = 0)
+    thirty_days_magnitude_difference_TP_Ia = np.append(thirty_days_magnitude_difference_TP_Ia, [thirty_days_magnitude_difference], axis = 0)
+    half_peak_time_TP_Ia = np.append(half_peak_time_TP_Ia, [half_peak_time], axis = 0)
+    fifth_peak_time_TP_Ia = np.append(fifth_peak_time_TP_Ia, [fifth_peak_time], axis = 0)
 
-peak_flux_TP_II = np.empty((0,2))
+peak_magnitude_TP_II = np.empty((0,2))
+thirty_days_magnitude_difference_TP_II = np.empty((0,2))
+half_peak_time_TP_II = np.empty((0,2))
+fifth_peak_time_TP_II = np.empty((0,2))
 
 for id, SN_id in enumerate(parameters_TP_II[:, 0]):
 
-    peak_flux = retrieve_global_parameters(SN_id, "ZTF", 1, parameters_TP_II[id, 1:])
-    peak_flux_TP_II = np.append(peak_flux_TP_II, [peak_flux], axis = 0)
+    peak_magnitude, thirty_days_magnitude_difference, half_peak_time, fifth_peak_time = retrieve_global_parameters(SN_id, "ZTF", 1, parameters_TP_II[id, 1:])
+    
+    peak_magnitude_TP_II = np.append(peak_magnitude_TP_II, [peak_magnitude], axis = 0)
+    thirty_days_magnitude_difference_TP_II = np.append(thirty_days_magnitude_difference_TP_II, [thirty_days_magnitude_difference], axis = 0)
+    half_peak_time_TP_II = np.append(half_peak_time_TP_II, [half_peak_time], axis = 0)
+    fifth_peak_time_TP_II = np.append(fifth_peak_time_TP_II, [fifth_peak_time], axis = 0)
 
-peak_flux_Ia = np.concatenate((peak_flux_OP_Ia, peak_flux_TP_Ia))
-peak_flux_II = np.concatenate((peak_flux_OP_II, peak_flux_TP_II))
-peak_flux = np.concatenate((peak_flux_Ia, peak_flux_II))
+peak_magnitude_Ia = np.concatenate((peak_magnitude_OP_Ia, peak_magnitude_TP_Ia))
+peak_magnitude_II = np.concatenate((peak_magnitude_OP_II, peak_magnitude_TP_II))
+peak_magnitude = np.concatenate((peak_magnitude_Ia, peak_magnitude_II))
+
+thirty_days_magnitude_difference_Ia = np.concatenate((thirty_days_magnitude_difference_OP_Ia, thirty_days_magnitude_difference_TP_Ia))
+thirty_days_magnitude_difference_II = np.concatenate((thirty_days_magnitude_difference_OP_II, thirty_days_magnitude_difference_TP_II))
+thirty_days_magnitude_difference = np.concatenate((thirty_days_magnitude_difference_Ia, thirty_days_magnitude_difference_II))
+
+half_peak_time_Ia = np.concatenate((half_peak_time_OP_Ia, half_peak_time_TP_Ia))
+half_peak_time_II = np.concatenate((half_peak_time_OP_II, half_peak_time_TP_II))
+half_peak_time = np.concatenate((half_peak_time_Ia, half_peak_time_II))
+
+fifth_peak_time_Ia = np.concatenate((fifth_peak_time_OP_Ia, fifth_peak_time_TP_Ia))
+fifth_peak_time_II = np.concatenate((fifth_peak_time_OP_II, fifth_peak_time_TP_II))
+fifth_peak_time = np.concatenate((fifth_peak_time_Ia, fifth_peak_time_II))
+
+# %%
+
+global_parameters = np.column_stack((peak_magnitude, thirty_days_magnitude_difference, half_peak_time, fifth_peak_time))
+print(np.shape(global_parameters))
 
 # %%
 
@@ -356,11 +508,35 @@ def plot_global_parameter(parameter_values_Ia, parameter_values_II, parameter_la
     plt.legend()
     plt.show()
 
+def plot_comparisson_global_parameter(parameter_1_values_Ia, parameter_1_values_II, parameter_2_values_Ia, parameter_2_values_II, parameter_1_label, parameter_2_label, survey, filter):
+
+    plt.scatter(parameter_1_values_Ia, parameter_2_values_Ia, c = "tab:orange", label = "SNe Ia-CSM", zorder = 10)
+    plt.scatter(parameter_1_values_II, parameter_2_values_II, c = "tab:blue", label = "SNe IIn", zorder = 5)
+
+    plt.xlabel(f"{parameter_1_label}", fontsize = 13)
+    plt.ylabel(f"{parameter_2_label}", fontsize = 13)
+    plt.title(f" Parameter comparisson of {survey} SNe in the {filter}-filter.")
+    plt.grid(alpha = 0.3)
+    plt.legend()
+    plt.show()
+
 # %%
 
-plot_global_parameter(peak_flux_Ia[:, 0], peak_flux_II[:, 0], "Flux $(\mu Jy)$", "Peak flux", "ZTF", "r")
-plot_global_parameter(peak_flux_Ia[:, 1], peak_flux_II[:, 1], "Flux $(\mu Jy)$", "Peak flux", "ZTF", "g")
+# plot_global_parameter(peak_magnitude_Ia[:, 0], peak_magnitude_II[:, 0], "Absolute magnitude", "Peak absolute magnitude", "ZTF", "r")
+# plot_global_parameter(peak_magnitude_Ia[:, 1], peak_magnitude_II[:, 1], "Absolute magnitude", "Peak absolute magnitude", "ZTF", "g")
 
+# plot_global_parameter(thirty_days_magnitude_difference_Ia[:, 0], thirty_days_magnitude_difference_II[:, 0], "Absolute magnitude", "Thirty days absolute magnitude difference", "ZTF", "r")
+# plot_global_parameter(thirty_days_magnitude_difference_Ia[:, 1], thirty_days_magnitude_difference_II[:, 1], "Absolute magnitude", "Thirty days absolute magnitude difference", "ZTF", "g")
+
+# plot_global_parameter(half_peak_time_Ia[:, 0], half_peak_time_II[:, 0], "Time (days)", "Time above half of peak flux", "ZTF", "r")
+# plot_global_parameter(half_peak_time_Ia[:, 1], half_peak_time_II[:, 1], "Time (days)", "Time above half of peak flux", "ZTF", "g")
+
+# plot_global_parameter(fifth_peak_time_Ia[:, 0], fifth_peak_time_II[:, 0], "Time (days)", "Time above fifth of peak flux", "ZTF", "r")
+# plot_global_parameter(fifth_peak_time_Ia[:, 1], fifth_peak_time_II[:, 1], "Time (days)", "Time above fifth of peak flux", "ZTF", "g")
+
+plot_comparisson_global_parameter(half_peak_time_Ia[:, 0], half_peak_time_II[:, 0], \
+                                  peak_magnitude_Ia[:, 0], peak_magnitude_II[:, 0], \
+                                  "Time above half of peak flux (days)", "Thirty days absolute magnitude difference", "ZTF", "r")
 ####################################################################
 # %%
 
@@ -450,10 +626,10 @@ def plot_UMAP(parameter_values, SN_type):
     
 # %%
 
-plot_PCA(parameters_one_peak[:, 1:], ztf_label)
+plot_PCA(global_parameters, ztf_label)
 
-plot_tSNE(parameters_one_peak[:, 1:], ztf_label)
+plot_tSNE(global_parameters, ztf_label)
 
-plot_UMAP(parameters_one_peak[:, 1:], ztf_label)
+plot_UMAP(global_parameters, ztf_label)
 
 # %%

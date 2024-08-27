@@ -1,5 +1,5 @@
 # %%
-from data_processing import load_ztf_data, data_augmentation
+from data_processing import load_ztf_data, load_atlas_data, data_augmentation
 import pymultinest
 
 import matplotlib.pyplot as plt
@@ -20,6 +20,10 @@ plt.rcParams["text.usetex"] = True
 ztf_id_sn_Ia_CSM = np.loadtxt("Data/ZTF_ID_SNe_Ia_CSM", delimiter = ",", dtype = "str")
 ztf_id_sn_IIn = np.loadtxt("Data/ZTF_ID_SNe_IIn", delimiter = ",", dtype = "str")
 ztf_id = np.concatenate((ztf_id_sn_Ia_CSM, ztf_id_sn_IIn))
+
+atlas_id_sn_Ia_CSM = np.loadtxt("Data/ATLAS_ID_SNe_Ia_CSM", delimiter = ",", dtype = "str")
+atlas_id_sn_IIn = np.loadtxt("Data/ATLAS_ID_SNe_IIn", delimiter = ",", dtype = "str")
+atlas_id = np.concatenate((atlas_id_sn_Ia_CSM, atlas_id_sn_IIn))
 
 # %%
 
@@ -699,13 +703,13 @@ def plot_extrema_and_second_peak(SN_id, time_aug, flux_aug, fluxerr_aug, f1_valu
 def isolate_second_peak(main_filter_second_peak, extrema_f1, peak_width_f1, extrema_f2, peak_width_f2, 
                         time_aug, flux_aug, fluxerr_aug, filters_aug, f1_values_aug, f2_values_aug):
 
-    global time, flux, fluxerr, filters
+    global time, flux, fluxerr, filters, f1, f2
 
     # Isolate the original data points that are part of the peak
-    if main_filter_second_peak == "r":
+    if main_filter_second_peak == f1:
         peak_data = np.where(np.abs(time - time_aug[f1_values_aug][extrema_f1][2]) < peak_width_f1)
 
-    elif main_filter_second_peak == "g":
+    elif main_filter_second_peak == f2:
         peak_data = np.where(np.abs(time - time_aug[f2_values_aug][extrema_f2][2]) < peak_width_f2)
 
     # If the peak contains more data points than the number of fit parameters
@@ -868,6 +872,13 @@ def fit_light_curve(SN_id, survey):
 
         # Load the data
         time, flux, fluxerr, filters = load_ztf_data(SN_id)
+
+    if survey == "ATLAS":
+        f1 = "o"
+        f2 = "c"
+
+        # Load the data
+        time, flux, fluxerr, filters = load_atlas_data(SN_id)
 
     f1_values = np.where(filters == f1)
     f2_values = np.where(filters == f2)
@@ -1076,10 +1087,10 @@ def fit_light_curve(SN_id, survey):
 # %%
 
 if __name__ == '__main__':
-    survey = "ZTF"
+    survey = "ATLAS"
 
     #["ZTF23aansdlc", "ZTF21abhqqfa", "ZTF19abjacdu", "ZTF22abhwlnm", "ZTF20acklcyp", "ZTF22aanesux", "ZTF19aceqlxc", "ZTF22aaemvhi", "ZTF23abjikaf", "ZTF23aadchqd", "ZTF19acukucu", "ZTF19aaezale", "ZTF18abtswjk", "ZTF20acqqdkl", "ZTF18acvgjqv", "ZTF18abuatfp"]:
-    for SN_id in ztf_id[187:]:
+    for SN_id in atlas_id:
 
         fit_light_curve(SN_id, survey)
 
