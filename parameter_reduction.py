@@ -1,6 +1,6 @@
 # %%
 
-from data_processing import load_ztf_data, ztf_micro_flux_to_magnitude
+from data_processing import load_ztf_data, load_atlas_data, ztf_micro_flux_to_magnitude
 from parameter_estimation import light_curve_one_peak, light_curve_two_peaks
 
 # from sklearn.preprocessing import LabelEncoder
@@ -27,6 +27,13 @@ ztf_id_sn_IIn = np.loadtxt("Data/ZTF_ID_SNe_IIn", delimiter = ",", dtype = "str"
 
 ztf_id = np.concatenate((ztf_id_sn_Ia_CSM, ztf_id_sn_IIn))
 ztf_label = np.array(["SN Ia CSM"] * len(ztf_id_sn_Ia_CSM) + ["SN IIn"] * len(ztf_id_sn_IIn))
+
+
+atlas_id_sn_Ia_CSM = np.loadtxt("Data/ATLAS_ID_SNe_Ia_CSM", delimiter = ",", dtype = "str")
+atlas_id_sn_IIn = np.loadtxt("Data/ATLAS_ID_SNe_IIn", delimiter = ",", dtype = "str")
+
+atlas_id = np.concatenate((atlas_id_sn_Ia_CSM, atlas_id_sn_IIn))
+atlas_label = np.array(["SN Ia CSM"] * len(atlas_id_sn_Ia_CSM) + ["SN IIn"] * len(atlas_id_sn_IIn))
 
 ####################################################################
 
@@ -98,6 +105,13 @@ def transform_data(SN_id, survey, parameter_values):
         # Load the data
         time, flux, fluxerr, filters = load_ztf_data(SN_id)
 
+    elif survey == "ATLAS":
+        f1 = "o"
+        f2 = "c"
+
+        # Load the data
+        time, flux, fluxerr, filters = load_atlas_data(SN_id)
+
     f1_values = np.where(filters == f1)
     f2_values = np.where(filters == f2)
 
@@ -112,13 +126,13 @@ def transform_data(SN_id, survey, parameter_values):
         peak_flux = np.copy(flux[peak_main_idx])
         
     transformed_values = [peak_flux * 10 ** parameter_values[0], parameter_values[1], 10 ** parameter_values[2], 10 ** parameter_values[3], parameter_values[4], 10 **parameter_values[5], 10 **parameter_values[6]] \
-                        +[peak_flux * 10 ** (parameter_values[0] + parameter_values[7]), parameter_values[1] + parameter_values[8], 10 ** (parameter_values[2] + parameter_values[9]), 10 ** (parameter_values[3] + parameter_values[10]), parameter_values[4] * (10 ** parameter_values[11]), 10 ** (parameter_values[5] + parameter_values[12]), 10 ** (parameter_values[6] + parameter_values[13])]
+                       + [peak_flux * 10 ** (parameter_values[0] + parameter_values[7]), parameter_values[1] + parameter_values[8], 10 ** (parameter_values[2] + parameter_values[9]), 10 ** (parameter_values[3] + parameter_values[10]), parameter_values[4] * (10 ** parameter_values[11]), 10 ** (parameter_values[5] + parameter_values[12]), 10 ** (parameter_values[6] + parameter_values[13])]
 
     return transformed_values
 
 # %%
 
-def plot_red_chi_squared(red_chi_squared_Ia, red_chi_squared_II, survey):
+def plot_red_chi_squared(red_chi_squared_Ia, red_chi_squared_II, percentile_95, survey):
 
     min_bin = np.min(np.concatenate((red_chi_squared_Ia, red_chi_squared_II)))
     max_bin = np.max(np.concatenate((red_chi_squared_Ia, red_chi_squared_II)))
@@ -129,6 +143,8 @@ def plot_red_chi_squared(red_chi_squared_Ia, red_chi_squared_II, survey):
 
     plt.hist(red_chi_squared_Ia, bins = bins, linewidth = 2, color = "tab:orange", histtype = "step",  fill = False, label = "SNe Ia-CSM", zorder = 10)
     plt.hist(red_chi_squared_II, bins = bins, linewidth = 2, color = "tab:blue", histtype = "step",  fill = False, label = "SNe IIn", zorder = 5)
+
+    plt.axvline(x = percentile_95, color = "black", linestyle = "dashed", label = "95th percentile")
 
     plt.xlabel(r"$\mathrm{X}^{2}_{red}$", fontsize = 13)
     plt.ylabel("N", fontsize = 13)
@@ -146,7 +162,7 @@ def plot_correlation(parameter_values_Ia, parameter_values_II, survey, filter, p
 
             plt.scatter(parameter_values_Ia[:, idx_1], parameter_values_Ia[:, idx_2], c = "tab:orange", label = "SNe Ia-CSM", zorder = 10)
             plt.scatter(parameter_values_II[:, idx_1], parameter_values_II[:, idx_2], c = "tab:blue", label = "SNe IIn", zorder = 5)
-
+            
             plt.xlabel(parameters[idx_1], fontsize = 13)
             plt.ylabel(parameters[idx_2], fontsize = 13)
             plt.title(f"Parameter correlation of {survey} SNe in the {filter}-filter.")
@@ -197,130 +213,101 @@ def plot_distribution(parameter_values_Ia, parameter_values_II, survey, filter, 
 
 # %%
 
+survey = "ZTF"
+
+if survey == "ZTF":
+    SN_names_Ia = ztf_id_sn_Ia_CSM
+    SN_names_II = ztf_id_sn_IIn
+
+    f1 = "r"
+    f2 = "g"
+
+elif survey == "ATLAS":
+    SN_names_Ia = atlas_id_sn_Ia_CSM
+    SN_names_II = atlas_id_sn_IIn
+
+    f1 = "o"
+    f2 = "c"
+
+red_chi_squared_values_OP_Ia, red_chi_squared_values_OP_II = retrieve_red_chi_squared(f"Data/Analytical_parameters/{survey}/one_peak/red_chi_squared_OP.csv", SN_names_Ia, SN_names_II)
+red_chi_squared_values_TP_Ia, red_chi_squared_values_TP_II = retrieve_red_chi_squared(f"Data/Analytical_parameters/{survey}/two_peaks/red_chi_squared_TP.csv", SN_names_Ia, SN_names_II)
+
+red_chi_squared_values_Ia = np.concatenate((red_chi_squared_values_OP_Ia, red_chi_squared_values_TP_Ia))
+red_chi_squared_values_II = np.concatenate((red_chi_squared_values_OP_II, red_chi_squared_values_TP_II))
+
+red_chi_squared_values = np.concatenate((red_chi_squared_values_Ia, red_chi_squared_values_II))
+percentile_95 = np.percentile(red_chi_squared_values[:, 1], 95)
+
+# Remove light curves with reduced chi squared larger than the 95th percentile
+cut_light_curves = np.where(red_chi_squared_values[:, 1] > percentile_95)
+
+cut_light_curves_Ia = np.where(np.isin(SN_names_Ia, red_chi_squared_values[cut_light_curves, 0][0]))[0]
+cut_light_curves_II = np.where(np.isin(SN_names_II, red_chi_squared_values[cut_light_curves, 0][0]))[0]
+
+SN_names_Ia = np.delete(SN_names_Ia, cut_light_curves_Ia)
+SN_names_II = np.delete(SN_names_II, cut_light_curves_II)
+# %%
+
+plot_red_chi_squared(red_chi_squared_values_Ia[:, 1], red_chi_squared_values_II[:, 1], percentile_95, survey)
+
+# %%
+
 parameters = ["$\mathrm{A}$", "$\mathrm{t_{0}}$", "$\mathrm{t_{rise}}$", "$\mathrm{\gamma}$", r"$\mathrm{\beta}$", "$\mathrm{t_{fall}}$"]
 
-parameters_OP_Ia, parameters_TP_Ia = retrieve_parameters(ztf_id_sn_Ia_CSM, "ZTF")
-parameters_OP_II, parameters_TP_II = retrieve_parameters(ztf_id_sn_IIn, "ZTF")
+parameters_OP_Ia, parameters_TP_Ia = retrieve_parameters(SN_names_Ia, survey)
+parameters_OP_II, parameters_TP_II = retrieve_parameters(SN_names_II, survey)
 
 parameters_one_peak_Ia = np.concatenate((parameters_OP_Ia, parameters_TP_Ia[:, :15]))
 parameters_one_peak_II = np.concatenate((parameters_OP_II, parameters_TP_II[:, :15]))
 parameters_one_peak = np.concatenate((parameters_one_peak_Ia, parameters_one_peak_II))
 
-red_chi_squared_values_OP_Ia, red_chi_squared_values_OP_II = retrieve_red_chi_squared("Data/Analytical_parameters/ZTF/one_peak/red_chi_squared_OP.csv", ztf_id_sn_Ia_CSM, ztf_id_sn_IIn)
-red_chi_squared_values_TP_Ia, red_chi_squared_values_TP_II = retrieve_red_chi_squared("Data/Analytical_parameters/ZTF/two_peaks/red_chi_squared_TP.csv", ztf_id_sn_Ia_CSM, ztf_id_sn_IIn)
+# %%
 
-red_chi_squared_values_Ia = np.concatenate((red_chi_squared_values_OP_Ia, red_chi_squared_values_TP_Ia))
-red_chi_squared_values_II = np.concatenate((red_chi_squared_values_OP_II, red_chi_squared_values_TP_II))
+plot_correlation(parameters_one_peak_Ia[:, 1:7], parameters_one_peak_II[:, 1:7], survey, f1, parameters)
+plot_correlation(parameters_one_peak_Ia[:, 8:14], parameters_one_peak_II[:, 8:14], survey, f2, parameters)
 
 # %%
 
-plot_red_chi_squared(red_chi_squared_values_Ia[:, 1], red_chi_squared_values_II[:, 1], "ZTF")
+# plot_correlation_contour(parameters_one_peak_Ia[:, 1:7], parameters_one_peak_II[:, 1:7], survey, f1, parameters)
+# plot_correlation_contour(parameters_one_peak_Ia[:, 8:14], parameters_one_peak_II[:, 8:14], survey, f2, parameters)
 
 # %%
 
-plot_correlation(parameters_one_peak_Ia[:, 1:7], parameters_one_peak_II[:, 1:7], "ZTF", "r", parameters)
-plot_correlation(parameters_one_peak_Ia[:, 8:14], parameters_one_peak_II[:, 8:14], "ZTF", "g", parameters)
+plot_distribution(parameters_one_peak_Ia[:, 1:7], parameters_one_peak_II[:, 1:7], survey, f1, parameters)
+plot_distribution(parameters_one_peak_Ia[:, 8:14], parameters_one_peak_II[:, 8:14], survey, f2, parameters)
 
 # %%
 
-plot_correlation_contour(parameters_one_peak_Ia[:, 1:7], parameters_one_peak_II[:, 1:7], "ZTF", "r", parameters)
-plot_correlation_contour(parameters_one_peak_Ia[:, 8:14], parameters_one_peak_II[:, 8:14], "ZTF", "g", parameters)
-
-# %%
-
-plot_distribution(parameters_one_peak_Ia[:, 1:7], parameters_one_peak_II[:, 1:7], "ZTF", "r", parameters)
-plot_distribution(parameters_one_peak_Ia[:, 8:14], parameters_one_peak_II[:, 8:14], "ZTF", "g", parameters)
-
- # %%
-
-# transformed_parameters_one_peak_Ia = np.array([transform_data(parameters_one_peak_Ia[idx, 0], "ZTF", parameters_one_peak_Ia[idx, 1:]) for idx in range(len(parameters_one_peak_Ia))])
-# transformed_parameters_one_peak_II = np.array([transform_data(parameters_one_peak_II[idx, 0], "ZTF", parameters_one_peak_II[idx, 1:]) for idx in range(len(parameters_one_peak_II))])
+# transformed_parameters_one_peak_Ia = np.array([transform_data(parameters_one_peak_Ia[idx, 0], survey, parameters_one_peak_Ia[idx, 1:]) for idx in range(len(parameters_one_peak_Ia))])
+# transformed_parameters_one_peak_II = np.array([transform_data(parameters_one_peak_II[idx, 0], survey, parameters_one_peak_II[idx, 1:]) for idx in range(len(parameters_one_peak_II))])
 
 # # %%
 
-# plot_correlation(transformed_parameters_one_peak_Ia[:, 1:7], transformed_parameters_one_peak_II[:, 1:7], "ZTF", "r", parameters)
-# plot_correlation(transformed_parameters_one_peak_Ia[:, 8:14], transformed_parameters_one_peak_II[:, 8:14], "ZTF", "g", parameters)
+# plot_correlation(transformed_parameters_one_peak_Ia[:, 1:7], transformed_parameters_one_peak_II[:, 1:7], survey, f1, parameters)
+# plot_correlation(transformed_parameters_one_peak_Ia[:, 8:14], transformed_parameters_one_peak_II[:, 8:14], survey, f2, parameters)
 
 # # %%
 
-# plot_distribution(transformed_parameters_one_peak_Ia[:, 1:7], transformed_parameters_one_peak_II[:, 1:7], "ZTF", "r", parameters)
-# plot_distribution(transformed_parameters_one_peak_Ia[:, 8:14], transformed_parameters_one_peak_II[:, 8:14], "ZTF", "g", parameters)
+# plot_distribution(transformed_parameters_one_peak_Ia[:, 1:7], transformed_parameters_one_peak_II[:, 1:7], survey, f1, parameters)
+# plot_distribution(transformed_parameters_one_peak_Ia[:, 8:14], transformed_parameters_one_peak_II[:, 8:14], survey, f2, parameters)
 
-# %%
-
-np.where(parameters_OP_II[:, 0] == "ZTF22aasoali")
-# %%
-
-SN_id =  "ZTF22aasoali"
-f1 = "r"
-f2 = "g"
-
-time, flux, _, filters = load_ztf_data(SN_id)
-
-f1_values = np.where(filters == f1)
-f2_values = np.where(filters == f2)
-
-# Shift the light curve so that the main peak is at time = 0 MJD
-if f1 in filters:
-    peak_main_idx = np.argmax(flux[f1_values])
-    peak_time = np.copy(time[peak_main_idx])
-    peak_flux = np.copy(flux[peak_main_idx])
-
-else: 
-    # If there is only data in the g-band, the g-band becomes the main band 
-    peak_main_idx = np.argmax(flux[f2_values])
-    peak_time = np.copy(time[peak_main_idx])
-    peak_flux = np.copy(flux[peak_main_idx])
-
-time -= peak_time
-
-amount_fit = 200
-time_fit = np.concatenate((np.linspace(time.min(), time.max(), amount_fit), np.linspace(time.min(), time.max(), amount_fit)))
-f1_values_fit = np.arange(amount_fit)
-f2_values_fit = np.arange(amount_fit) + amount_fit
-
-flux_fit = light_curve_one_peak(time_fit, parameters_OP_II[141, 1:], peak_flux, f1_values_fit, f2_values_fit)
-
-magnitude_fit = ztf_micro_flux_to_magnitude(flux_fit)
-
-time_fit += peak_time
-
-if len(f2_values) != 0:
-    peak_fit_idx_f2 = np.argmax(flux_fit[f2_values_fit]) + amount_fit
-    peak_time_fit_f2 = np.copy(time_fit[peak_fit_idx_f2])
-    peak_flux_fit_f2 = np.copy(flux_fit[peak_fit_idx_f2])
-    time_fit_f2 = time_fit - peak_time_fit_f2
-
-    peak_magnitude_f2 = magnitude_fit[peak_fit_idx_f2]
-
-    thirty_days_after_peak_f2 = np.argmin(np.abs(time_fit_f2[f2_values_fit] - 30)) + amount_fit
-    thirty_days_magnitude_f2 = magnitude_fit[thirty_days_after_peak_f2]
-    thirty_days_magnitude_difference_f2 = peak_magnitude_f2 - thirty_days_magnitude_f2
-
-    half_peak_flux_f2 = np.argmin(np.abs(flux_fit[f2_values_fit][(peak_fit_idx_f2 - amount_fit):] - peak_flux_fit_f2 * 0.5)) + peak_fit_idx_f2
-    half_peak_time_f2 = time_fit_f2[half_peak_flux_f2]
-
-    fifth_peak_flux_f2 = np.argmin(np.abs(flux_fit[f2_values_fit][(peak_fit_idx_f2 - amount_fit):] - peak_flux_fit_f2 * 0.2)) + peak_fit_idx_f2
-    fifth_peak_time_f2 = time_fit_f2[fifth_peak_flux_f2]
-    
-plt.plot(time_fit[f2_values_fit], flux_fit[f2_values_fit])
-plt.scatter(time_fit[peak_fit_idx_f2], flux_fit[peak_fit_idx_f2])
-plt.scatter(time_fit[thirty_days_after_peak_f2], flux_fit[thirty_days_after_peak_f2])
-plt.scatter(time_fit[half_peak_flux_f2], flux_fit[half_peak_flux_f2])
-plt.scatter(time_fit[fifth_peak_flux_f2], flux_fit[fifth_peak_flux_f2])
-plt.show()
-
-print(half_peak_time_f2)
 ####################################################################
 # %%
 
-def retrieve_global_parameters(SN_id, survey, peak_number, parameter_values):
+def retrieve_best_fit(SN_id, survey, peak_number, parameter_values):
 
     if survey == "ZTF":
         f1 = "r"
         f2 = "g"
 
         time, flux, _, filters = load_ztf_data(SN_id)
+
+    if survey == "ATLAS":
+        f1 = "o"
+        f2 = "c"
+
+        # Load the data
+        time, flux, _, filters = load_atlas_data(SN_id)
 
     f1_values = np.where(filters == f1)
     f2_values = np.where(filters == f2)
@@ -340,7 +327,7 @@ def retrieve_global_parameters(SN_id, survey, peak_number, parameter_values):
     time -= peak_time
 
     amount_fit = 200
-    time_fit = np.concatenate((np.linspace(time.min(), time.max(), amount_fit), np.linspace(time.min(), time.max(), amount_fit)))
+    time_fit = np.concatenate((np.linspace(-150, 500, amount_fit), np.linspace(-150, 500, amount_fit)))
     f1_values_fit = np.arange(amount_fit)
     f2_values_fit = np.arange(amount_fit) + amount_fit
 
@@ -353,6 +340,14 @@ def retrieve_global_parameters(SN_id, survey, peak_number, parameter_values):
     magnitude_fit = ztf_micro_flux_to_magnitude(flux_fit)
 
     time_fit += peak_time
+
+    return time_fit, flux_fit, magnitude_fit
+
+# %%
+
+retrieve_best_fit(parameters_one_peak_II[40, 0], survey, 1, parameters_one_peak_II[40, 1:])
+
+# %%
 
     if len(f1_values) != 0:
         peak_fit_idx_f1 = np.argmax(flux_fit[f1_values_fit])
@@ -522,21 +517,21 @@ def plot_comparisson_global_parameter(parameter_1_values_Ia, parameter_1_values_
 
 # %%
 
-# plot_global_parameter(peak_magnitude_Ia[:, 0], peak_magnitude_II[:, 0], "Absolute magnitude", "Peak absolute magnitude", "ZTF", "r")
-# plot_global_parameter(peak_magnitude_Ia[:, 1], peak_magnitude_II[:, 1], "Absolute magnitude", "Peak absolute magnitude", "ZTF", "g")
+plot_global_parameter(peak_magnitude_Ia[:, 0], peak_magnitude_II[:, 0], "Absolute magnitude", "Peak absolute magnitude", "ZTF", "r")
+plot_global_parameter(peak_magnitude_Ia[:, 1], peak_magnitude_II[:, 1], "Absolute magnitude", "Peak absolute magnitude", "ZTF", "g")
 
-# plot_global_parameter(thirty_days_magnitude_difference_Ia[:, 0], thirty_days_magnitude_difference_II[:, 0], "Absolute magnitude", "Thirty days absolute magnitude difference", "ZTF", "r")
-# plot_global_parameter(thirty_days_magnitude_difference_Ia[:, 1], thirty_days_magnitude_difference_II[:, 1], "Absolute magnitude", "Thirty days absolute magnitude difference", "ZTF", "g")
+plot_global_parameter(thirty_days_magnitude_difference_Ia[:, 0], thirty_days_magnitude_difference_II[:, 0], "Absolute magnitude", "Thirty days absolute magnitude difference", "ZTF", "r")
+plot_global_parameter(thirty_days_magnitude_difference_Ia[:, 1], thirty_days_magnitude_difference_II[:, 1], "Absolute magnitude", "Thirty days absolute magnitude difference", "ZTF", "g")
 
-# plot_global_parameter(half_peak_time_Ia[:, 0], half_peak_time_II[:, 0], "Time (days)", "Time above half of peak flux", "ZTF", "r")
-# plot_global_parameter(half_peak_time_Ia[:, 1], half_peak_time_II[:, 1], "Time (days)", "Time above half of peak flux", "ZTF", "g")
+plot_global_parameter(half_peak_time_Ia[:, 0], half_peak_time_II[:, 0], "Time (days)", "Time above half of peak flux", "ZTF", "r")
+plot_global_parameter(half_peak_time_Ia[:, 1], half_peak_time_II[:, 1], "Time (days)", "Time above half of peak flux", "ZTF", "g")
 
-# plot_global_parameter(fifth_peak_time_Ia[:, 0], fifth_peak_time_II[:, 0], "Time (days)", "Time above fifth of peak flux", "ZTF", "r")
-# plot_global_parameter(fifth_peak_time_Ia[:, 1], fifth_peak_time_II[:, 1], "Time (days)", "Time above fifth of peak flux", "ZTF", "g")
+plot_global_parameter(fifth_peak_time_Ia[:, 0], fifth_peak_time_II[:, 0], "Time (days)", "Time above fifth of peak flux", "ZTF", "r")
+plot_global_parameter(fifth_peak_time_Ia[:, 1], fifth_peak_time_II[:, 1], "Time (days)", "Time above fifth of peak flux", "ZTF", "g")
 
-plot_comparisson_global_parameter(half_peak_time_Ia[:, 0], half_peak_time_II[:, 0], \
-                                  peak_magnitude_Ia[:, 0], peak_magnitude_II[:, 0], \
-                                  "Time above half of peak flux (days)", "Thirty days absolute magnitude difference", "ZTF", "r")
+# plot_comparisson_global_parameter(half_peak_time_Ia[:, 0], half_peak_time_II[:, 0], \
+#                                   peak_magnitude_Ia[:, 0], peak_magnitude_II[:, 0], \
+#                                   "Time above half of peak flux (days)", "Thirty days absolute magnitude difference", "ZTF", "r")
 ####################################################################
 # %%
 
@@ -633,3 +628,6 @@ plot_tSNE(global_parameters, ztf_label)
 plot_UMAP(global_parameters, ztf_label)
 
 # %%
+global_parameters
+# %%
+
