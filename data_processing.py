@@ -497,16 +497,16 @@ def test():
     # plot_data_augmentation("2020ywx", passbands, passband2lam, "GP",
     #                     time, flux, fluxerr, time_aug, flux_aug, flux_err_aug, passband_aug)
     
-    time, flux, fluxerr, passbands, passband2lam, augmentation = data_augmentation("ZTF", time_g, flux_g, fluxerr_g,
-                                                                                time_r, flux_r, fluxerr_r, "GP")
+    # time, flux, fluxerr, passbands, passband2lam, augmentation = data_augmentation("ZTF", time_g, flux_g, fluxerr_g,
+    #                                                                             time_r, flux_r, fluxerr_r, "GP")
 
-    approx_peak_idx = np.argmax(flux)
-    approx_peak_time = time[approx_peak_idx]
+    # approx_peak_idx = np.argmax(flux)
+    # approx_peak_time = time[approx_peak_idx]
 
-    time_aug, flux_aug, flux_err_aug, passband_aug = augmentation.augmentation(approx_peak_time - 100, approx_peak_time + 250, n_obs = 1000)
+    # time_aug, flux_aug, flux_err_aug, passband_aug = augmentation.augmentation(approx_peak_time - 100, approx_peak_time + 250, n_obs = 1000)
 
-    plot_data_augmentation(ztf_id[1], passbands, passband2lam, "GP",
-                        time, flux, fluxerr, time_aug, flux_aug, flux_err_aug, passband_aug)
+    # plot_data_augmentation(ztf_id[1], passbands, passband2lam, "GP",
+    #                     time, flux, fluxerr, time_aug, flux_aug, flux_err_aug, passband_aug)
     
     # time, flux, fluxerr, passbands, passband2lam, augmentation = data_augmentation("ZTF", time_g, flux_g, fluxerr_g,
     #                                                                             time_r, flux_r, fluxerr_r, "NF")
