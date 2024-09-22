@@ -1089,7 +1089,6 @@ def fit_light_curve(SN_id, survey):
 if __name__ == '__main__':
     survey = "ATLAS"
 
-    #["ZTF23aansdlc", "ZTF21abhqqfa", "ZTF19abjacdu", "ZTF22abhwlnm", "ZTF20acklcyp", "ZTF22aanesux", "ZTF19aceqlxc", "ZTF22aaemvhi", "ZTF23abjikaf", "ZTF23aadchqd", "ZTF19acukucu", "ZTF19aaezale", "ZTF18abtswjk", "ZTF20acqqdkl", "ZTF18acvgjqv", "ZTF18abuatfp"]:
     for SN_id in atlas_id:
 
         fit_light_curve(SN_id, survey)

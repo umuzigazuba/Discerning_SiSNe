@@ -10,6 +10,7 @@ from sklearn.gaussian_process.kernels import (RBF, Matern,
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import os
 
 plt.rcParams["text.usetex"] = True
@@ -114,32 +115,6 @@ def plot_ztf_data(ztf_id, time, flux, fluxerr, filters, save_fig = False):
 
 ### ATLAS ###
 
-def retrieve_atlas_data(atlas_id, discovery_dates, passband):
-
-    data = np.loadtxt(f"Data/OLD_ATLAS_data/{atlas_id}/{atlas_id}.{passband}.1.00days.lc.txt", skiprows = 1, usecols = (0, 2, 3))
-    valid_data_idx = np.where((~np.isnan(data[:, 0])) & (data[:, 2] < 50))
-    valid_data = data[valid_data_idx]
-
-    start_date_idx = np.where(discovery_dates[:, 0] == atlas_id)
-    start_date = float(discovery_dates[start_date_idx, 1][0, 0])
-    last_date = valid_data[-1, 0]
-
-    if start_date + 300 > last_date:
-        end_date = last_date
-    else:
-        end_date = start_date + 300
-        
-    SN_dates = np.where((valid_data[:, 0] >= start_date) & (valid_data[:, 0] <= end_date))
-
-    if len(SN_dates[0] != 0):
-        time = valid_data[SN_dates, 0]
-        flux = valid_data[SN_dates, 1]
-        fluxerr = valid_data[SN_dates, 2]
-            
-        return time[0], flux[0], fluxerr[0]
-    
-    return [], [], []
-
 def load_atlas_data(atlas_id):
 
     time = []
@@ -147,16 +122,16 @@ def load_atlas_data(atlas_id):
     fluxerr = []
     filters = []
 
-    if os.path.isdir(f"Data/ATLAS_data/{atlas_id}/o/"):
-        atlas_data_o = np.load(f"Data/ATLAS_data/{atlas_id}/o/.npy")
+    if os.path.isdir(f"Data/ATLAS_data/forced_photometry/{atlas_id}/o/"):
+        atlas_data_o = np.load(f"Data/ATLAS_data/forced_photometry/{atlas_id}/o/.npy")
 
         time.extend(atlas_data_o[0])
         flux.extend(atlas_data_o[1])
         fluxerr.extend(atlas_data_o[2])
         filters.extend(["o"] * len(atlas_data_o[0]))
 
-    if os.path.isdir(f"Data/ATLAS_data/{atlas_id}/c/"):
-        atlas_data_c = np.load(f"Data/ATLAS_data/{atlas_id}/c/.npy")
+    if os.path.isdir(f"Data/ATLAS_data/forced_photometry/{atlas_id}/c/"):
+        atlas_data_c = np.load(f"Data/ATLAS_data/forced_photometry/{atlas_id}/c/.npy")
 
         time.extend(atlas_data_c[0])
         flux.extend(atlas_data_c[1])
@@ -171,7 +146,7 @@ def plot_atlas_data(atlas_id, time_c, flux_c, fluxerr_c, time_o, flux_o, fluxerr
         plt.errorbar(time_o, flux_o, yerr = fluxerr_o, fmt = "o", markersize = 4, capsize = 2, color = "tab:blue", label = "Band: o")
 
     if len(time_c) != 0:
-        plt.errorbar(time_c, flux_c, yerr = fluxerr_c, fmt = "o", markersize = 4, capsize = 2, color = "tab:blue", label = "Band: c")
+        plt.errorbar(time_c, flux_c, yerr = fluxerr_c, fmt = "o", markersize = 4, capsize = 2, color = "tab:orange", label = "Band: c")
 
     plt.xlabel("Modified Julian Date", fontsize = 13)
     plt.ylabel("Flux $(\mu Jy)$", fontsize = 13)
@@ -179,7 +154,7 @@ def plot_atlas_data(atlas_id, time_c, flux_c, fluxerr_c, time_o, flux_o, fluxerr
     plt.grid(alpha = 0.3)
     plt.legend()
     if save_fig:
-        plt.savefig(f"Plots/ATLAS_lightcurves_plots/ATLAS_data_{atlas_id}", dpi = 300)
+        plt.savefig(f"Plots/ATLAS_lightcurves_plots/forced_photometry/ATLAS_data_{atlas_id}", dpi = 300)
         plt.close()
     else:
         plt.show()
@@ -249,32 +224,13 @@ atlas_id_sn_Ia_CSM = np.loadtxt("Data/ATLAS_ID_SNe_Ia_CSM", delimiter = ",", dty
 atlas_id_sn_IIn = np.loadtxt("Data/ATLAS_ID_SNe_IIn", delimiter = ",", dtype = "str")
 
 atlas_id = np.concatenate((atlas_id_sn_Ia_CSM, atlas_id_sn_IIn))
-discovery_dates = np.loadtxt("Data/OLD_ATLAS_data/sninfo.txt", skiprows = 1, usecols = (0, 3), dtype = "str")
+# discovery_dates = np.loadtxt("Data/OLD_ATLAS_data/sninfo.txt", skiprows = 1, usecols = (0, 3), dtype = "str")
 
 # %%
 
 ### Data processing ###
 
 ## Small light curves + light curve clipping: 
-
-def OLD_plot_ztf_data(ztf_id, time_g, flux_g, fluxerr_g, time_r, flux_r, fluxerr_r, save_fig = False):
-
-    if len(time_r) != 0:
-        plt.errorbar(time_r, flux_r, yerr = fluxerr_r, fmt = "o", markersize = 4, capsize = 2, color = "tab:blue", label = "Band: r")
-
-    if len(time_g) != 0:
-        plt.errorbar(time_g, flux_g, yerr = fluxerr_g, fmt = "o", markersize = 4, capsize = 2, color = "tab:orange", label = "Band: g")
-
-    plt.xlabel("Modified Julian Date", fontsize = 13)
-    plt.ylabel("Flux $(\mu Jy)$", fontsize = 13)
-    plt.title(f"Light curve of SN {ztf_id}.")
-    plt.grid(alpha = 0.3)
-    plt.legend()
-    if save_fig:
-        plt.savefig(f"Plots/ZTF_lightcurves_plots/ZTF_data_{ztf_id}", dpi = 300)
-        plt.close()
-    else:
-        plt.show()
 
 
 def get_magnitude_extinction(magnitude, ra, dec, wavelength):
@@ -292,7 +248,7 @@ def get_magnitude_extinction(magnitude, ra, dec, wavelength):
 
     return magnitude - delta_mag
 
-def data_processing(survey, SN_names):
+def OLD_data_processing(survey, SN_names):
 
     r_wavelength = 6173.23
     g_wavelength = 4741.64
@@ -436,6 +392,57 @@ def data_processing(survey, SN_names):
             os.makedirs(f"Data/{survey}_data/{SN_id}/{filter_1}/", exist_ok = True)
             np.save(f"Data/{survey}_data/{SN_id}/{filter_1}/", SN_data_f1)
 
+def data_processing_atlas(SN_names):
+
+    for SN_id in SN_names:
+
+        data = pd.read_csv(f"Data/ATLAS_data/forced_photometry/{SN_id}.csv")
+
+        time = data["MJD"].to_numpy()
+        flux = data["uJy"].to_numpy()
+        fluxerr = data["duJy"].to_numpy()
+        filter = data["F"].to_numpy()
+
+        # Remove noisy observations
+        delete_red_chi = np.where((data["chi/N"] < 0.5) | (data["chi/N"] > 3))
+        delete_flux = np.where(data["uJy"] < - 100)
+        delete_sky_mag_o = np.where((data["F"] == "o") & (data["Sky"] < 18))
+        delete_sky_mag_c = np.where((data["F"] == "c") & (data["Sky"] < 18.5))
+        delete_flux_error = np.where(data["duJy"] > 40)
+
+        delete_indices = np.union1d(
+            delete_red_chi,
+            np.union1d(
+                delete_flux,
+                np.union1d(
+                    delete_sky_mag_o,
+                    np.union1d(delete_sky_mag_c, delete_flux_error)
+                )
+            )
+        )
+
+        time = np.delete(time, delete_indices)
+        flux = np.delete(flux, delete_indices)
+        fluxerr = np.delete(fluxerr, delete_indices)
+        filter = np.delete(filter, delete_indices)
+
+        filter_o = np.where(filter == "o")
+        filter_c = np.where(filter == "c")
+
+        if len(time[filter_o]) > 0:
+            SN_data_o = np.stack((time[filter_o], flux[filter_o], fluxerr[filter_o]))
+
+            os.makedirs(f"Data/ATLAS_data/forced_photometry/{SN_id}/o/", exist_ok = True)
+            np.save(f"Data/ATLAS_data/forced_photometry/{SN_id}/o/", SN_data_o)
+
+        if len(time[filter_c]) > 0:
+            SN_data_c = np.stack((time[filter_c], flux[filter_c], fluxerr[filter_c]))
+
+            os.makedirs(f"Data/ATLAS_data/forced_photometry/{SN_id}/c/", exist_ok = True)
+            np.save(f"Data/ATLAS_data/forced_photometry/{SN_id}/c/", SN_data_c)
+
+        plot_atlas_data(SN_id, time[filter_c], flux[filter_c], fluxerr[filter_c], \
+                        time[filter_o], flux[filter_o], fluxerr[filter_o], save_fig = True)
 # %%
 
 def test():
@@ -523,21 +530,67 @@ def test():
     
 if __name__ == '__main__':
     # test()
-    data_processing("ATLAS", atlas_id)
-
+    data_processing_atlas(atlas_id_sn_IIn)
+    
 # %%
 
 # # Define the array of elements (directory names)
+# input_file = pd.read_csv(f"Data/tns_search (13).csv").to_numpy()
+# SN_name = np.copy(input_file[:, 1])
 
 # # Define the path to the text file where the directory names will be stored
-# output_file = 'Data/ZTF_ID_SNe_IIn'
+# output_file = 'Data/ATLAS_ID_SNe_IIn'
 
 # # Open the file in append mode
 # with open(output_file, 'a') as file:
 #     # Loop through each element in the array
-#     for SN_id in ztf_id_sn_IIn:
-#         # Check if the directory exists
-#         if os.path.isdir(f"Data/ZTF_data/{SN_id}"):
-#             # If it exists, write the directory name to the text file
-#             file.write(SN_id + '\n')
-# %%
+#     for SN_id in SN_name:
+#         # # Check if the directory exists
+#         # if os.path.isdir(f"Data/ZTF_data/{SN_id}"):
+#         #     # If it exists, write the directory name to the text file
+#         file.write(SN_id + '\n')
+
+# def OLD_retrieve_atlas_data(atlas_id, discovery_dates, passband):
+
+#     data = np.loadtxt(f"Data/OLD_ATLAS_data/{atlas_id}/{atlas_id}.{passband}.1.00days.lc.txt", skiprows = 1, usecols = (0, 2, 3))
+#     valid_data_idx = np.where((~np.isnan(data[:, 0])) & (data[:, 2] < 50))
+#     valid_data = data[valid_data_idx]
+
+#     start_date_idx = np.where(discovery_dates[:, 0] == atlas_id)
+#     start_date = float(discovery_dates[start_date_idx, 1][0, 0])
+#     last_date = valid_data[-1, 0]
+
+#     if start_date + 300 > last_date:
+#         end_date = last_date
+#     else:
+#         end_date = start_date + 300
+        
+#     SN_dates = np.where((valid_data[:, 0] >= start_date) & (valid_data[:, 0] <= end_date))
+
+#     if len(SN_dates[0] != 0):
+#         time = valid_data[SN_dates, 0]
+#         flux = valid_data[SN_dates, 1]
+#         fluxerr = valid_data[SN_dates, 2]
+            
+#         return time[0], flux[0], fluxerr[0]
+    
+#     return [], [], []
+
+# def OLD_plot_ztf_data(ztf_id, time_g, flux_g, fluxerr_g, time_r, flux_r, fluxerr_r, save_fig = False):
+
+#     if len(time_r) != 0:
+#         plt.errorbar(time_r, flux_r, yerr = fluxerr_r, fmt = "o", markersize = 4, capsize = 2, color = "tab:blue", label = "Band: r")
+
+#     if len(time_g) != 0:
+#         plt.errorbar(time_g, flux_g, yerr = fluxerr_g, fmt = "o", markersize = 4, capsize = 2, color = "tab:orange", label = "Band: g")
+
+#     plt.xlabel("Modified Julian Date", fontsize = 13)
+#     plt.ylabel("Flux $(\mu Jy)$", fontsize = 13)
+#     plt.title(f"Light curve of SN {ztf_id}.")
+#     plt.grid(alpha = 0.3)
+#     plt.legend()
+#     if save_fig:
+#         plt.savefig(f"Plots/ZTF_lightcurves_plots/ZTF_data_{ztf_id}", dpi = 300)
+#         plt.close()
+#     else:
+#         plt.show()

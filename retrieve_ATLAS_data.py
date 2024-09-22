@@ -9,6 +9,8 @@ from astropy.coordinates import SkyCoord
 from astropy import units as u
 import pandas as pd
 
+# %%
+
 file = pd.read_csv(f"Data/tns_search (11).csv").to_numpy()
 
 times = np.copy(file[:, 20])
@@ -64,7 +66,8 @@ headers = {"Authorization": f"Token {token}", "Accept": "application/json"}
 
 # %%
 
-for idx in range(1, len(times)):
+for idx in range(1):
+    print(SN_name[idx])
     task_url = None
     while not task_url:
         with requests.Session() as s:
@@ -163,7 +166,7 @@ for idx in range(len(times)):
 
     filter_o = np.where(filter == "o")
     filter_c = np.where(filter == "c")
-
+    
     plt.errorbar(date[filter_o], flux[filter_o], yerr = fluxerr[filter_o], fmt = "o", markersize = 4, capsize = 2)
     plt.errorbar(date[filter_c], flux[filter_c], yerr = fluxerr[filter_c], fmt = "o", markersize = 4, capsize = 2)
     plt.show()
@@ -181,5 +184,8 @@ ra_degree = ra_dec.ra.degree
 dec_degree = ra_dec.dec.degree
 
 # %%
-dec_degree
+dfresult = pd.read_csv(StringIO(textdata.replace("###", "")), delim_whitespace=True)
+dfresult.to_csv(f"Data/ATLAS_data/{SN_name[idx]}.csv")
+# %%
+SN_name[0]
 # %%
