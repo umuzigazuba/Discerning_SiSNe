@@ -447,11 +447,11 @@ def plot_best_fit_light_curve(SN_id, red_chi_squared, time_fit, flux_fit, f1_val
 
     if f1 in filters:
         plt.plot(time_fit[f1_values_fit] + peak_time, flux_fit[f1_values_fit], linestyle = "--", linewidth = 2, alpha = 0.9, color = "tab:blue", label = f"Best-fitted light curve {f1}-band")
-        plt.errorbar(time[f1_values] + peak_time, flux[f1_values], yerr = fluxerr[f1_values], fmt = "o", markersize = 4, capsize = 2, alpha = 0.9, color = "tab:blue", label = f"Band: {f1}", zorder = 5)
+        plt.errorbar(time[f1_values] + peak_time, flux[f1_values], yerr = fluxerr[f1_values], fmt = "o", markersize = 4, capsize = 2, alpha = 0.3, color = "tab:blue", label = f"Band: {f1}", zorder = 5)
 
     if f2 in filters:
         plt.plot(time_fit[f2_values_fit] + peak_time, flux_fit[f2_values_fit], linestyle = "--", linewidth = 2, alpha = 0.9, color = "tab:orange", label = f"Best-fitted light curve {f2}-band")                
-        plt.errorbar(time[f2_values] + peak_time, flux[f2_values], yerr = fluxerr[f2_values], fmt = "o", markersize = 4, capsize = 2, alpha = 0.9, color = "tab:orange", label = f"Band: {f2}", zorder = 5)
+        plt.errorbar(time[f2_values] + peak_time, flux[f2_values], yerr = fluxerr[f2_values], fmt = "o", markersize = 4, capsize = 2, alpha = 0.3, color = "tab:orange", label = f"Band: {f2}", zorder = 5)
 
     plt.xlabel("Modified Julian Date", fontsize = 13)
     plt.ylabel("Flux $(\mu Jy)$", fontsize = 13)

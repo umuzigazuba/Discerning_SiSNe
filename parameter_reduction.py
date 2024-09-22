@@ -243,7 +243,7 @@ def plot_distribution(parameter_values_Ia, parameter_values_II, survey, filter, 
 
 # %%
 
-survey = "ATLAS"
+survey = "ZTF"
 
 if survey == "ZTF":
     SN_names_Ia = ztf_id_sn_Ia_CSM
@@ -804,7 +804,45 @@ plot_PCA_with_clusters(global_parameters_scaled, SN_labels, kmeans)
 cluster_0 = np.where(kmeans.labels_ == 0)
 cluster_1 = np.where(kmeans.labels_ == 1)
 
-parameters_one_peak[cluster_0, 0]
+parameters_one_peak[cluster_0, 1:]
+
+def plot_SN_collection(SN_names):
+
+    for SN_id in SN_names:
+    
+        f1 = "r"
+        f2 = "g"
+
+        time, flux, fluxerr, filters = load_ztf_data(SN_id)
+
+        f1_values = np.where(filters == f1)
+
+        # Shift the light curve so that the main peak is at time = 0 MJD
+        peak_main_idx = np.argmax(flux[f1_values])
+        peak_time = np.copy(time[peak_main_idx])
+        peak_flux = np.copy(flux[peak_main_idx])
+
+        time -= peak_time
+
+        amount_fit = 500
+        time_fit = np.concatenate((np.linspace(-150, 500, amount_fit), np.linspace(-150, 500, amount_fit)))
+        f1_values_fit = np.arange(amount_fit)
+        f2_values_fit = np.arange(amount_fit) + amount_fit
+
+        if peak_number == 1:
+            flux_fit = light_curve_one_peak(time_fit, parameter_values, peak_flux, f1_values_fit, f2_values_fit)
+
+        elif peak_number == 2:
+            flux_fit = light_curve_two_peaks(time_fit, parameter_values, peak_flux, f1_values_fit, f2_values_fit)
+
+        # Reshape the data so that the flux is between 0 and 1 micro Jy
+        flux_min = np.copy(np.min(flux_aug))
+        flux_max = np.copy(np.max(flux_aug))
+
+        flux = (flux - flux_min) / flux_max
+        fluxerr = (fluxerr) / flux_max
+        flux_aug = (flux_aug - flux_min) / flux_max
+        fluxerr_aug = (fluxerr_aug) / flux_max
 # %%
 # ["ZTF19aceqlxc", "ZTF19acykaae", "ZTF18aamftst"] in S23 as possible Ia-CSM and also in cluster 0
 # "ZTF19acvkibv" in S23 as possible Ia-CSM but not in cluster 0 0
