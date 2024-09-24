@@ -933,15 +933,15 @@ def fit_light_curve(SN_id, survey):
             imporved_peak_parameters = one_peak_parameters
 
         # Plot the results
-        np.save(f"Data/Analytical_parameters/{survey}/one_peak/parameters_{SN_id}_OP", imporved_peak_parameters)
+        np.save(f"Data/Analytical_parameters/{survey}/forced_photometry/one_peak/parameters_{SN_id}_OP", imporved_peak_parameters)
         red_chi_squared = reduced_chi_squared_one_peak(imporved_peak_parameters)
 
-        with open(f"Data/Analytical_parameters/{survey}/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
+        with open(f"Data/Analytical_parameters/{survey}/forced_photometry/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
             writer = csv.writer(file)
             writer.writerow([SN_id, red_chi_squared])
         
         flux_fit = light_curve_one_peak(time_fit, imporved_peak_parameters, peak_flux, f1_values_fit, f2_values_fit)
-        plot_best_fit_light_curve(SN_id, red_chi_squared, time_fit, flux_fit, f1_values_fit, f2_values_fit, peak_time, f"{survey}/one_peak/light_curve_{SN_id}_OP")
+        plot_best_fit_light_curve(SN_id, red_chi_squared, time_fit, flux_fit, f1_values_fit, f2_values_fit, peak_time, f"{survey}/forced_photometry/one_peak/light_curve_{SN_id}_OP")
 
     else: 
         # Possible that there is a second peak
@@ -1001,15 +1001,15 @@ def fit_light_curve(SN_id, survey):
 
             if not ((down_bound < guess_parameters) & (guess_parameters < up_bound)).all():
                 # The one-peak light curve is a better fit
-                np.save(f"Data/Analytical_parameters/{survey}/one_peak/parameters_{SN_id}_OP", imporved_peak_parameters)
+                np.save(f"Data/Analytical_parameters/{survey}/forced_photometry/one_peak/parameters_{SN_id}_OP", imporved_peak_parameters)
                 
-                with open(f"Data/Analytical_parameters/{survey}/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
+                with open(f"Data/Analytical_parameters/{survey}/forced_photometry/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
                     writer = csv.writer(file)
                     writer.writerow([SN_id, red_chi_squared_OP])
 
                 # Plot the results
                 flux_fit = light_curve_one_peak(time_fit, imporved_peak_parameters, peak_flux, f1_values_fit, f2_values_fit)
-                plot_best_fit_light_curve(SN_id, red_chi_squared_OP, time_fit, flux_fit, f1_values_fit, f2_values_fit, peak_time, f"{survey}/one_peak/light_curve_{SN_id}_OP")
+                plot_best_fit_light_curve(SN_id, red_chi_squared_OP, time_fit, flux_fit, f1_values_fit, f2_values_fit, peak_time, f"{survey}/forced_photometry/one_peak/light_curve_{SN_id}_OP")
 
                 return 
             
@@ -1024,15 +1024,15 @@ def fit_light_curve(SN_id, survey):
 
                 except ValueError:
                     # The one-peak light curve is a better fit
-                    np.save(f"Data/Analytical_parameters/{survey}/one_peak/parameters_{SN_id}_OP", imporved_peak_parameters)
+                    np.save(f"Data/Analytical_parameters/{survey}/forced_photometry/one_peak/parameters_{SN_id}_OP", imporved_peak_parameters)
 
-                    with open(f"Data/Analytical_parameters/{survey}/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
+                    with open(f"Data/Analytical_parameters/{survey}/forced_photometry/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
                         writer = csv.writer(file)
                         writer.writerow([SN_id, red_chi_squared_OP])
 
                     # Plot the results
                     flux_fit = light_curve_one_peak(time_fit, imporved_peak_parameters, peak_flux, f1_values_fit, f2_values_fit)
-                    plot_best_fit_light_curve(SN_id, red_chi_squared_OP, time_fit, flux_fit, f1_values_fit, f2_values_fit, peak_time, f"{survey}/one_peak/light_curve_{SN_id}_OP")
+                    plot_best_fit_light_curve(SN_id, red_chi_squared_OP, time_fit, flux_fit, f1_values_fit, f2_values_fit, peak_time, f"{survey}/forced_photometry/one_peak/light_curve_{SN_id}_OP")
 
                     return
 
@@ -1062,34 +1062,34 @@ def fit_light_curve(SN_id, survey):
 
         if np.abs(red_chi_squared_OP - 1) < np.abs(red_chi_squared_TP - 1):
             # The one-peak light curve is a better fit
-            np.save(f"Data/Analytical_parameters/{survey}/one_peak/parameters_{SN_id}_OP", imporved_peak_parameters)
+            np.save(f"Data/Analytical_parameters/{survey}/forced_photometry/one_peak/parameters_{SN_id}_OP", imporved_peak_parameters)
             
-            with open(f"Data/Analytical_parameters/{survey}/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
+            with open(f"Data/Analytical_parameters/{survey}/forced_photometry/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
                 writer = csv.writer(file)
                 writer.writerow([SN_id, red_chi_squared_OP])
 
             # Plot the results
             flux_fit_OP = light_curve_one_peak(time_fit, imporved_peak_parameters, peak_flux, f1_values_fit, f2_values_fit)
-            plot_best_fit_light_curve(SN_id, red_chi_squared_OP, time_fit, flux_fit_OP, f1_values_fit, f2_values_fit, peak_time, f"{survey}/one_peak/light_curve_{SN_id}_OP")
+            plot_best_fit_light_curve(SN_id, red_chi_squared_OP, time_fit, flux_fit_OP, f1_values_fit, f2_values_fit, peak_time, f"{survey}/forced_photometry/one_peak/light_curve_{SN_id}_OP")
 
         else:
             # The two-peaks light curve is a better fit
-            np.save(f"Data/Analytical_parameters/{survey}/two_peaks/parameters_{SN_id}_TP", two_peaks_parameters) 
+            np.save(f"Data/Analytical_parameters/{survey}/forced_photometry/two_peaks/parameters_{SN_id}_TP", two_peaks_parameters) 
 
-            with open(f"Data/Analytical_parameters/{survey}/two_peaks/red_chi_squared_TP.csv", "a", newline = "") as file:
+            with open(f"Data/Analytical_parameters/{survey}/forced_photometry/two_peaks/red_chi_squared_TP.csv", "a", newline = "") as file:
                 writer = csv.writer(file)
                 writer.writerow([SN_id, red_chi_squared_TP])
 
             # Plot the results
             flux_fit_TP = light_curve_two_peaks(time_fit, two_peaks_parameters, peak_flux, f1_values_fit, f2_values_fit)
-            plot_best_fit_light_curve(SN_id, red_chi_squared_TP, time_fit, flux_fit_TP, f1_values_fit, f2_values_fit, peak_time, f"{survey}/two_peaks/light_curve_{SN_id}_TP")
+            plot_best_fit_light_curve(SN_id, red_chi_squared_TP, time_fit, flux_fit_TP, f1_values_fit, f2_values_fit, peak_time, f"{survey}/forced_photometry/two_peaks/light_curve_{SN_id}_TP")
 
 # %%
 
 if __name__ == '__main__':
     survey = "ATLAS"
 
-    for SN_id in atlas_id:
+    for SN_id in atlas_id_sn_IIn[107:]:
 
         fit_light_curve(SN_id, survey)
 

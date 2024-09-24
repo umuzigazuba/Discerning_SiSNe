@@ -294,6 +294,10 @@ parameters_one_peak_Ia = np.concatenate((parameters_OP_Ia, parameters_TP_Ia[:, :
 parameters_one_peak_II = np.concatenate((parameters_OP_II, parameters_TP_II[:, :15]))
 parameters_one_peak = np.concatenate((parameters_one_peak_Ia, parameters_one_peak_II))
 
+parameters_two_peaks_Ia = np.concatenate((np.concatenate((parameters_OP_Ia, np.zeros((len(parameters_OP_Ia), 6))), axis = 1), parameters_TP_Ia))
+parameters_two_peaks_II = np.concatenate((np.concatenate((parameters_OP_II, np.zeros((len(parameters_OP_II), 6))), axis = 1), parameters_TP_II))
+parameters_two_peaks = np.concatenate((parameters_two_peaks_Ia, parameters_two_peaks_II))
+
 # %%
 plot_correlation(parameters_one_peak_Ia[:, 1:7], parameters_one_peak_II[:, 1:7], survey, f1, parameters)
 plot_correlation(parameters_one_peak_Ia[:, 8:14], parameters_one_peak_II[:, 8:14], survey, f2, parameters)
@@ -485,6 +489,8 @@ for idx in range(len(parameters_TP_II)):
 global_parameters_Ia = np.concatenate((global_parameters_OP_Ia, global_parameters_TP_Ia))
 global_parameters_II = np.concatenate((global_parameters_OP_II, global_parameters_TP_II))
 global_parameters = np.concatenate((global_parameters_Ia, global_parameters_II))
+number_of_peaks = np.concatenate((np.concatenate(([1] * len(global_parameters_OP_Ia), [2] * len(global_parameters_TP_Ia))), \
+                                  np.concatenate(([1] * len(global_parameters_OP_II), [2] * len(global_parameters_TP_II)))))
 
 global_names = ["Peak magnitude", "Rise time [days]", \
                 "$\mathrm{m_{peak - 10d} - m_{peak}}$", "$\mathrm{m_{peak + 15d} - m_{peak}}$", \
@@ -492,7 +498,6 @@ global_names = ["Peak magnitude", "Rise time [days]", \
                 "Duration above 20 %% of peak [days]"]
 
 # %%
-
 # plot_correlation(global_parameters_Ia[:, 0:7], global_parameters_II[:, 0:7], survey, f1, global_names)
 # plot_correlation(global_parameters_Ia[:, 7:15], global_parameters_II[:, 7:15], survey, f2, global_names)
 
@@ -782,38 +787,62 @@ plot_PCA_with_clusters(parameters_one_peak_scaled, SN_labels, kmeans)
 
 # %%
 
+#### No redshift + double peak
+
+parameters_two_peaks_names = ["t_rise_f1", "gamma_f1", "beta_f1", "t_fall_f1", "error_f1", \
+                             "A_f2", "t_0_f2", "t_rise_f2", "gamma_f2", "beta_f2", "t_fall_f2", "error_f2"] \
+                             + ["amp_f1", "mu_f1", "std_f1", "amp_f2", "mu_f2", "std_f2"]
+
+parameters_two_peaks_scaled = scaler.fit_transform(parameters_two_peaks[:, 3:])
+
+plot_PCA(parameters_two_peaks_scaled, SN_labels, parameters_two_peaks_names)
+best_number = number_of_clusters(parameters_two_peaks_scaled)
+
+kmeans = KMeans(n_clusters = 2)
+kmeans.fit(parameters_two_peaks_scaled)
+
+plot_PCA_with_clusters(parameters_two_peaks_scaled, SN_labels, kmeans)
+
+# %%
+
 global_parameters_names = ["peak_mag_r", "rise_time_r", "mag_diff_10_r", "mag_diff_15_r", \
                            "mag_diff_30_r", "duration_50_r", "duration_20_r", \
                            "peak_mag_g", "rise_time_g", "mag_diff_10_g", "mag_diff_15_g", \
-                           "mag_diff_30_g", "duration_50_g", "duration_20_g", "z"]
+                           "mag_diff_30_g", "duration_50_g", "duration_20_g"] #, "z"]
 
-global_parameters_redshift = np.concatenate((global_parameters, np.array(redshifts).reshape(len(SN_labels), 1)), axis = 1)
+# global_parameters_redshift = np.concatenate((global_parameters[cluster_0], np.array(redshifts).reshape(len(SN_labels[]), 1)), axis = 1)
 
-global_parameters_scaled = scaler.fit_transform(global_parameters_redshift)
+global_parameters_scaled = scaler.fit_transform(global_parameters[cluster_0])
 
-plot_PCA(global_parameters_scaled, SN_labels, global_parameters_names)
+plot_PCA(global_parameters_scaled, SN_labels[cluster_0], global_parameters_names)
 best_number = number_of_clusters(global_parameters_scaled)
 
-kmeans = KMeans(n_clusters = 2)
+kmeans = KMeans(n_clusters = best_number)
 kmeans.fit(global_parameters_scaled)
 
-plot_PCA_with_clusters(global_parameters_scaled, SN_labels, kmeans)
+plot_PCA_with_clusters(global_parameters_scaled, SN_labels[cluster_0], kmeans)
 
 # %%
 
 cluster_0 = np.where(kmeans.labels_ == 0)
 cluster_1 = np.where(kmeans.labels_ == 1)
 
-parameters_one_peak[cluster_0, 1:]
+# %%
 
-def plot_SN_collection(SN_names):
+def plot_SN_collection(fitting_parameters, number_of_peaks):
 
-    for SN_id in SN_names:
+    collection_times_f1 = []
+    collection_fluxes_f1 = []
+
+    collection_times_f2 = []
+    collection_fluxes_f2 = []
+
+    for idx in range(len(fitting_parameters)):
     
         f1 = "r"
         f2 = "g"
 
-        time, flux, fluxerr, filters = load_ztf_data(SN_id)
+        time, flux, _, filters = load_ztf_data(fitting_parameters[idx, 0])
 
         f1_values = np.where(filters == f1)
 
@@ -829,20 +858,57 @@ def plot_SN_collection(SN_names):
         f1_values_fit = np.arange(amount_fit)
         f2_values_fit = np.arange(amount_fit) + amount_fit
 
-        if peak_number == 1:
-            flux_fit = light_curve_one_peak(time_fit, parameter_values, peak_flux, f1_values_fit, f2_values_fit)
+        if number_of_peaks[idx] == 1:
+            flux_fit = light_curve_one_peak(time_fit, fitting_parameters[idx, 1:15], peak_flux, f1_values_fit, f2_values_fit)
 
-        elif peak_number == 2:
-            flux_fit = light_curve_two_peaks(time_fit, parameter_values, peak_flux, f1_values_fit, f2_values_fit)
+        elif number_of_peaks[idx] == 2:
+            flux_fit = light_curve_two_peaks(time_fit, fitting_parameters[idx, 1:], peak_flux, f1_values_fit, f2_values_fit)
+
+        time_fit += peak_time
+
+        peak_main_idx_f1 = np.argmax(flux_fit[f1_values_fit])
+        time_fit_f1 = time_fit[f1_values_fit] - time_fit[peak_main_idx_f1]
+        collection_times_f1.append(np.array(time_fit_f1))
+
+        peak_main_idx_f2 = np.argmax(flux_fit[f1_values_fit])
+        time_fit_f2 = time_fit[f2_values_fit] - time_fit[peak_main_idx_f2]
+        collection_times_f2.append(np.array(time_fit_f2))
 
         # Reshape the data so that the flux is between 0 and 1 micro Jy
-        flux_min = np.copy(np.min(flux_aug))
-        flux_max = np.copy(np.max(flux_aug))
+        # flux_fit_min_f1 = np.copy(np.min(flux_fit[f1_values_fit]))
+        flux_fit_max_f1 = np.copy(np.max(flux_fit[f1_values_fit]))
+        flux_fit_f1 = (flux_fit[f1_values_fit]) / flux_fit_max_f1
+        collection_fluxes_f1.append(np.array(flux_fit_f1))
 
-        flux = (flux - flux_min) / flux_max
-        fluxerr = (fluxerr) / flux_max
-        flux_aug = (flux_aug - flux_min) / flux_max
-        fluxerr_aug = (fluxerr_aug) / flux_max
+        # flux_fit_min_f2 = np.copy(np.min(flux_fit[f2_values_fit]))
+        flux_fit_max_f2 = np.copy(np.max(flux_fit[f2_values_fit]))
+        flux_fit_f2 = (flux_fit[f2_values_fit]) / flux_fit_max_f2
+        collection_fluxes_f2.append(np.array(flux_fit_f2))
+
+    return collection_times_f1, collection_times_f2, collection_fluxes_f1, collection_fluxes_f2
+
+# %%
+
+collection_times_f1, collection_times_f2, collection_fluxes_f1, collection_fluxes_f2 = plot_SN_collection(parameters_two_peaks, number_of_peaks)
+
+# %%
+
+plt.scatter(np.array(collection_times_f1)[cluster_0], np.array(collection_fluxes_f1)[cluster_0], s = 1)
+
+# plt.scatter(np.array(collection_times_f1)[cluster_1], np.array(collection_fluxes_f1)[cluster_1], s = 1)
+plt.show()
+
+# %%
+
+plt.scatter(np.array(collection_times_f1)[len(parameters_two_peaks_Ia):], np.array(collection_fluxes_f1)[len(parameters_two_peaks_Ia):], s = 1)
+# plt.scatter(np.array(collection_times_f1)[:len(parameters_two_peaks_Ia)], np.array(collection_fluxes_f1)[:len(parameters_two_peaks_Ia)], s = 1)
+# plt.scatter(np.array(collection_times_f1)[cluster_1], np.array(collection_fluxes_f1)[cluster_1], s = 0.5)
+# plt.scatter(np.array(collection_times_f1)[10], np.array(collection_fluxes_f1)[10], s = 1)
+
+plt.show()
+
+# %%
+parameters_one_peak[cluster_1, 0]
 # %%
 # ["ZTF19aceqlxc", "ZTF19acykaae", "ZTF18aamftst"] in S23 as possible Ia-CSM and also in cluster 0
 # "ZTF19acvkibv" in S23 as possible Ia-CSM but not in cluster 0 0

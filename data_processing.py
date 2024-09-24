@@ -429,6 +429,76 @@ def data_processing_atlas(SN_names):
         filter_o = np.where(filter == "o")
         filter_c = np.where(filter == "c")
 
+        time_o = time[filter_o]
+        flux_o = flux[filter_o]
+        fluxerr_o = fluxerr[filter_o]
+
+        time_c = time[filter_c]
+        flux_c = flux[filter_c]
+        fluxerr_c = fluxerr[filter_c]
+
+        # Light curve clipping 
+        
+        if len(time_o) != 0:
+            peak_idx_o =  0
+
+            if len(time_o) > 5:
+                while (flux_o[peak_idx_o] < flux_o[peak_idx_o + 1 : peak_idx_o + 3]).all():
+                    peak_idx_o += 1
+            else:
+                peak_idx_o = np.argmax(flux_o)
+
+            end_idx_o = len(time_o) - peak_idx_o
+            pts_to_delete_o = 0
+
+            if peak_idx_o != len(time_o) - 1:
+
+                peak_slope_o = (flux_o[-1] - flux_o[peak_idx_o])/(time_o[-1] - time_o[peak_idx_o])
+
+                for idx in range(2, end_idx_o):
+
+                    last_idx_o = -1 * idx
+                    slope_o = (flux_o[last_idx_o] - flux_o[-1])/(time_o[last_idx_o] - time_o[-1])
+
+                    if np.abs(slope_o) < 0.2 * np.abs(peak_slope_o):
+                        pts_to_delete_o = idx
+
+                if pts_to_delete_o > 0:
+
+                    time_o = time_o[: -pts_to_delete_o]
+                    flux_o = flux_o[: -pts_to_delete_o]
+                    fluxerr_o = fluxerr_o[: -pts_to_delete_o]
+
+        if len(time_c) != 0:
+            peak_idx_c =  0
+
+            if len(time_c) > 5:
+                while (flux_c[peak_idx_c] < flux_c[peak_idx_c + 1 : peak_idx_c + 3]).all():
+                    peak_idx_c += 1
+            else:
+                peak_idx_c = np.argmax(flux_c)
+
+            end_idx_c = len(time_c) - peak_idx_c
+            pts_to_delete_c = 0
+
+            if peak_idx_c != len(time_c) - 1:
+
+                peak_slope_c = (flux_c[-1] - flux_c[peak_idx_c])/(time_c[-1] - time_c[peak_idx_c])
+
+                for idx in range(2, end_idx_c):
+
+                    last_idx_c = -1 * idx
+                    slope_c = (flux_c[last_idx_c] - flux_c[-1])/(time_c[last_idx_c] - time_c[-1])
+
+                    if np.abs(slope_c) < 0.2 * np.abs(peak_slope_c):
+                        pts_to_delete_c = idx
+
+                if pts_to_delete_c > 0:
+
+                    time_c = time_c[: -pts_to_delete_c]
+                    flux_c = flux_c[: -pts_to_delete_c]
+                    fluxerr_c = fluxerr_c[: -pts_to_delete_c]
+
         if len(time[filter_o]) > 0:
             SN_data_o = np.stack((time[filter_o], flux[filter_o], fluxerr[filter_o]))
 
@@ -443,6 +513,7 @@ def data_processing_atlas(SN_names):
 
         plot_atlas_data(SN_id, time[filter_c], flux[filter_c], fluxerr[filter_c], \
                         time[filter_o], flux[filter_o], fluxerr[filter_o], save_fig = True)
+        
 # %%
 
 def test():
@@ -530,7 +601,7 @@ def test():
     
 if __name__ == '__main__':
     # test()
-    data_processing_atlas(atlas_id_sn_IIn)
+    data_processing_atlas(atlas_id)
     
 # %%
 
