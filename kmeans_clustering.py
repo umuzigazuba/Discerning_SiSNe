@@ -86,7 +86,7 @@ def plot_PCA_with_clusters(parameter_values, SN_type, kmeans, number_of_peaks):
 
     # Plot the background regions (colored by KMeans predictions)
     plt.figure(figsize=(8, 6))
-    plt.contourf(xx, yy, grid_clusters, levels=[-0.5, 0.5, 1.5], colors=["tab:green", "tab:purple"], alpha=0.3)
+    plt.contourf(xx, yy, grid_clusters, levels=[-0.5, 0.5, 1.5, 2.5, 3.5], colors=["tab:green", "tab:purple", "tab:brown", "tab:cyan"], alpha=0.3)
 
     colors = ["tab:blue", "tab:orange", "tab:green", "tab:purple"]
     unique_labels = np.unique(SN_type)
@@ -108,15 +108,17 @@ def plot_PCA_with_clusters(parameter_values, SN_type, kmeans, number_of_peaks):
                     c = colors[i], marker = '^', label = f'{lbl} (2 peaks)', edgecolor = 'k')
 
     # Create proxy artists for the background clusters
-    cluster0_patch = mpatches.Patch(color = "tab:green", label = "K-means cluster 1")
-    cluster1_patch = mpatches.Patch(color = "tab:purple", label = "K-means cluster 2")
+    cluster0_patch = mpatches.Patch(color = "tab:green", label = "K-means cluster 0")
+    cluster1_patch = mpatches.Patch(color = "tab:purple", label = "K-means cluster 1")
+    cluster2_patch = mpatches.Patch(color = "tab:brown", label = "K-means cluster 2")
+    cluster3_patch = mpatches.Patch(color = "tab:cyan", label = "K-means cluster 3")
 
     # Labels and legend
     plt.title(f"PCA plot")
     plt.xlabel("Principal Component 1")
     plt.ylabel("Principal Component 2")
     plt.grid(alpha = 0.3)
-    plt.legend(handles = plt.legend().legendHandles + [cluster0_patch, cluster1_patch])
+    plt.legend(handles = plt.legend().legendHandles + [cluster0_patch, cluster1_patch, cluster2_patch, cluster3_patch])
     plt.show()
 
     
@@ -215,254 +217,271 @@ def number_of_clusters(parameters):
     
 # %%
 
-survey = "ZTF"
-fitting_parameters, global_parameters, number_of_peaks, SN_labels, SN_labels_color = determine_parameters(survey)
+if __name__ == '__main__':
+    # %%
 
-scaler = StandardScaler()
+    survey = "ZTF"
+    fitting_parameters, global_parameters, number_of_peaks, SN_labels, SN_labels_color = determine_parameters(survey)
 
-# %%
+    scaler = StandardScaler()
 
-#### No redshift
+    # %%
 
-fitting_parameters_names = ["t_rise_f1", "gamma_f1", "beta_f1", "t_fall_f1", "error_f1", \
-                             "A_f2", "t_0_f2", "t_rise_f2", "gamma_f2", "beta_f2", "t_fall_f2", "error_f2"]
+    #### No redshift
 
-fitting_parameters_scaled = scaler.fit_transform(fitting_parameters[:, 3:15])
+    fitting_parameters_names = ["t_rise_f1", "gamma_f1", "beta_f1", "t_fall_f1", "error_f1", \
+                                "A_f2", "t_0_f2", "t_rise_f2", "gamma_f2", "beta_f2", "t_fall_f2", "error_f2"]
 
-plot_PCA(fitting_parameters_scaled, SN_labels, fitting_parameters_names)
-best_number = number_of_clusters(fitting_parameters_scaled)
+    fitting_parameters_scaled = scaler.fit_transform(fitting_parameters[:, 3:15])
 
-kmeans = KMeans(n_clusters = best_number)
-kmeans.fit(fitting_parameters_scaled)
+    plot_PCA(fitting_parameters_scaled, SN_labels, fitting_parameters_names)
+    best_number = number_of_clusters(fitting_parameters_scaled)
 
-plot_PCA_with_clusters(fitting_parameters_scaled, SN_labels, kmeans, number_of_peaks)
+    kmeans = KMeans(n_clusters = best_number)
+    kmeans.fit(fitting_parameters_scaled)
 
-# %%
+    plot_PCA_with_clusters(fitting_parameters_scaled, SN_labels, kmeans, number_of_peaks)
 
-#### With redshift
+    # %%
 
-redshifts = retrieve_redshift(fitting_parameters[:, 0], survey)
+    #### With redshift
 
-peak_abs_magnitude = []
-for idx in range(len(redshifts)):
+    redshifts = retrieve_redshift(fitting_parameters[:, 0], survey)
 
-    peak_abs_magnitude.append(calculate_peak_absolute_magnitude(global_parameters[idx, 0], redshifts[idx]))
+    peak_abs_magnitude = []
+    for idx in range(len(redshifts)):
 
-fitting_parameters_names = ["A_f1", "t_rise_f1", "gamma_f1", "beta_f1", "t_fall_f1", "error_f1", \
-                             "A_f2", "t_0_f2", "t_rise_f2", "gamma_f2", "beta_f2", "t_fall_f2", "error_f2", \
-                             "M_r", "z"]
+        peak_abs_magnitude.append(calculate_peak_absolute_magnitude(global_parameters[idx, 0], redshifts[idx]))
 
-fitting_parameters_redshift = np.concatenate((fitting_parameters[:, 1].reshape(len(SN_labels), 1), fitting_parameters[:, 3:15], np.array(peak_abs_magnitude).reshape(len(SN_labels), 1), np.array(redshifts).reshape(len(SN_labels), 1)), axis = 1)
+    fitting_parameters_names = ["A_f1", "t_rise_f1", "gamma_f1", "beta_f1", "t_fall_f1", "error_f1", \
+                                "A_f2", "t_0_f2", "t_rise_f2", "gamma_f2", "beta_f2", "t_fall_f2", "error_f2", \
+                                "M_r", "z"]
 
-fitting_parameters_scaled = scaler.fit_transform(fitting_parameters_redshift)
+    fitting_parameters_redshift = np.concatenate((fitting_parameters[:, 1].reshape(len(SN_labels), 1), fitting_parameters[:, 3:15], np.array(peak_abs_magnitude).reshape(len(SN_labels), 1), np.array(redshifts).reshape(len(SN_labels), 1)), axis = 1)
 
-plot_PCA(fitting_parameters_scaled, SN_labels, fitting_parameters_names)
-best_number = number_of_clusters(fitting_parameters_scaled)
+    fitting_parameters_scaled = scaler.fit_transform(fitting_parameters_redshift)
 
-kmeans = KMeans(n_clusters = 2)
-kmeans.fit(fitting_parameters_scaled)
+    plot_PCA(fitting_parameters_scaled, SN_labels, fitting_parameters_names)
+    best_number = number_of_clusters(fitting_parameters_scaled)
 
-plot_PCA_with_clusters(fitting_parameters_scaled, SN_labels, kmeans, number_of_peaks)
+    kmeans = KMeans(n_clusters = 2)
+    kmeans.fit(fitting_parameters_scaled)
 
-# %%
+    plot_PCA_with_clusters(fitting_parameters_scaled, SN_labels, kmeans, number_of_peaks)
 
-#### No redshift + double peak
+    # %%
 
-parameters_two_peaks_names = ["t_rise_f1", "gamma_f1", "beta_f1", "t_fall_f1", "error_f1", \
-                             "A_f2", "t_0_f2", "t_rise_f2", "gamma_f2", "beta_f2", "t_fall_f2", "error_f2"] \
-                             + ["amp_f1", "mu_f1", "std_f1", "amp_f2", "mu_f2", "std_f2"]
+    #### No redshift + double peak
 
-parameters_two_peaks_scaled = scaler.fit_transform(fitting_parameters[:, 3:])
+    parameters_two_peaks_names = ["t_rise_f1", "gamma_f1", "beta_f1", "t_fall_f1", "error_f1", \
+                                "A_f2", "t_0_f2", "t_rise_f2", "gamma_f2", "beta_f2", "t_fall_f2", "error_f2"] \
+                                + ["amp_f1", "mu_f1", "std_f1", "amp_f2", "mu_f2", "std_f2"]
 
-plot_PCA(parameters_two_peaks_scaled, SN_labels, parameters_two_peaks_names)
-best_number = number_of_clusters(parameters_two_peaks_scaled)
+    parameters_two_peaks_scaled = scaler.fit_transform(fitting_parameters[:, 3:])
 
-kmeans = KMeans(n_clusters = 2)
-kmeans.fit(parameters_two_peaks_scaled)
+    plot_PCA(parameters_two_peaks_scaled, SN_labels, parameters_two_peaks_names)
+    best_number = number_of_clusters(parameters_two_peaks_scaled)
 
-plot_PCA_with_clusters(parameters_two_peaks_scaled, SN_labels, kmeans, number_of_peaks)
+    kmeans = KMeans(n_clusters = best_number)
+    kmeans.fit(parameters_two_peaks_scaled)
 
-# %%
+    plot_PCA_with_clusters(parameters_two_peaks_scaled, SN_labels, kmeans, number_of_peaks)
 
-global_parameters_names = ["peak_mag_r", "rise_time_r", "mag_diff_10_r", "mag_diff_15_r", \
-                           "mag_diff_30_r", "duration_50_r", "duration_20_r", \
-                           "peak_mag_g", "rise_time_g", "mag_diff_10_g", "mag_diff_15_g", \
-                           "mag_diff_30_g", "duration_50_g", "duration_20_g"] #, "z"]
+    # %%
 
-# global_parameters_redshift = np.concatenate((global_parameters, np.array(redshifts).reshape(len(SN_labels[]), 1)), axis = 1)
+    global_parameters_names = ["peak_mag_r", "rise_time_r", "mag_diff_10_r", "mag_diff_15_r", \
+                            "mag_diff_30_r", "duration_50_r", "duration_20_r", \
+                            "peak_mag_g", "rise_time_g", "mag_diff_10_g", "mag_diff_15_g", \
+                            "mag_diff_30_g", "duration_50_g", "duration_20_g"] #, "z"]
 
-global_parameters_scaled = scaler.fit_transform(global_parameters)
+    # global_parameters_redshift = np.concatenate((global_parameters, np.array(redshifts).reshape(len(SN_labels[]), 1)), axis = 1)
 
-plot_PCA(global_parameters_scaled, SN_labels, global_parameters_names)
-best_number = number_of_clusters(global_parameters_scaled)
+    global_parameters_scaled = scaler.fit_transform(global_parameters)
 
-kmeans = KMeans(n_clusters = 2)
-kmeans.fit(global_parameters_scaled)
+    plot_PCA(global_parameters_scaled, SN_labels, global_parameters_names)
+    best_number = number_of_clusters(global_parameters_scaled)
 
-plot_PCA_with_clusters(global_parameters_scaled, SN_labels, kmeans, number_of_peaks)
+    kmeans = KMeans(n_clusters = best_number)
+    kmeans.fit(global_parameters_scaled)
 
-cluster_0 = np.where(kmeans.labels_ == 0)
-cluster_1 = np.where(kmeans.labels_ == 1)
+    plot_PCA_with_clusters(global_parameters_scaled, SN_labels, kmeans, number_of_peaks)
 
-# %%
+    cluster_0 = np.where(kmeans.labels_ == 0)
+    cluster_1 = np.where(kmeans.labels_ == 1)
+    cluster_2 = np.where(kmeans.labels_ == 2)
+    cluster_3 = np.where(kmeans.labels_ == 3)
 
-global_parameters_names_reduced = ["mag_diff_10_r", "mag_diff_15_r", \
-                           "mag_diff_30_r", "duration_50_r", "duration_20_r", \
-                           "mag_diff_10_g", "mag_diff_15_g", \
-                           "mag_diff_30_g", "duration_50_g", "duration_20_g"] #, "z"]
+    # %%
 
-# global_parameters_redshift = np.concatenate((global_parameters, np.array(redshifts).reshape(len(SN_labels[]), 1)), axis = 1)
+    global_parameters_names_reduced = ["mag_diff_10_r", "mag_diff_15_r", \
+                            "mag_diff_30_r", "duration_50_r", "duration_20_r", \
+                            "mag_diff_10_g", "mag_diff_15_g", \
+                            "mag_diff_30_g", "duration_50_g", "duration_20_g"] #, "z"]
 
-global_parameters_scaled_reduced = np.concatenate((global_parameters_scaled[:, 2:7], global_parameters_scaled[:, 9:]), axis = 1)
+    # global_parameters_redshift = np.concatenate((global_parameters, np.array(redshifts).reshape(len(SN_labels[]), 1)), axis = 1)
 
-plot_PCA(global_parameters_scaled_reduced, SN_labels, global_parameters_names_reduced)
-best_number = number_of_clusters(global_parameters_scaled_reduced)
+    global_parameters_scaled_reduced = np.concatenate((global_parameters_scaled[:, 2:7], global_parameters_scaled[:, 9:]), axis = 1)
 
-kmeans = KMeans(n_clusters = best_number)
-kmeans.fit(global_parameters_scaled_reduced)
+    plot_PCA(global_parameters_scaled_reduced, SN_labels, global_parameters_names_reduced)
+    best_number = number_of_clusters(global_parameters_scaled_reduced)
 
-plot_PCA_with_clusters(global_parameters_scaled_reduced, SN_labels, kmeans, number_of_peaks)
+    kmeans = KMeans(n_clusters = best_number)
+    kmeans.fit(global_parameters_scaled_reduced)
 
-# %%
+    plot_PCA_with_clusters(global_parameters_scaled_reduced, SN_labels, kmeans, number_of_peaks)
 
-collection_times_f1, collection_times_f2, collection_fluxes_f1, collection_fluxes_f2 = plot_SN_collection(fitting_parameters, number_of_peaks)
+    # %%
 
-# %%
+    # combine the two
 
-plt.scatter(np.array(collection_times_f1)[cluster_1], np.array(collection_fluxes_f1)[cluster_1], s = 1)
-plt.scatter(np.array(collection_times_f1)[cluster_0], np.array(collection_fluxes_f1)[cluster_0], s = 1)
-plt.show()
+    # %%
 
-# %%
+    collection_times_f1, collection_times_f2, collection_fluxes_f1, collection_fluxes_f2 = plot_SN_collection(fitting_parameters, number_of_peaks)
 
-for idx in cluster_1[0]:
-    
-    f1 = "r"
-    f2 = "g"
+    # %%
+    plt.scatter(np.array(collection_times_f1)[cluster_3], np.array(collection_fluxes_f1)[cluster_3], s = 1, label = "cluster 3")
+    plt.legend()
+    plt.show()
+    plt.scatter(np.array(collection_times_f1)[cluster_2], np.array(collection_fluxes_f1)[cluster_2], s = 1, label = "cluster 2")
+    plt.legend()
+    plt.show()
+    plt.scatter(np.array(collection_times_f1)[cluster_1], np.array(collection_fluxes_f1)[cluster_1], s = 1, label = "cluster 1")
+    plt.legend()
+    plt.show()
+    plt.scatter(np.array(collection_times_f1)[cluster_0], np.array(collection_fluxes_f1)[cluster_0], s = 1, label = "cluster 0")
+    plt.legend()
+    plt.show()
 
-    time, flux, _, filters = load_ztf_data(fitting_parameters[idx, 0])
+    # %%
 
-    f1_values = np.where(filters == f1)
-    f2_values = np.where(filters == f2)
+    for idx in cluster_1[0]:
+        
+        f1 = "r"
+        f2 = "g"
 
-    # Shift the light curve so that the main peak is at time = 0 MJD
-    peak_main_idx = np.argmax(flux[f1_values])
-    peak_time = np.copy(time[peak_main_idx])
-    peak_flux = np.copy(flux[peak_main_idx])
+        time, flux, _, filters = load_ztf_data(fitting_parameters[idx, 0])
 
-    time -= peak_time
+        f1_values = np.where(filters == f1)
+        f2_values = np.where(filters == f2)
 
-    # Reshape the data so that the flux is between 0 and 1 micro Jy
-    # flux_fit_min_f1 = np.copy(np.min(flux_fit[f1_values_fit]))
-    flux_max_f1 = np.copy(np.max(flux[f1_values]))
-    flux_f1 = (flux[f1_values]) / flux_max_f1
+        # Shift the light curve so that the main peak is at time = 0 MJD
+        peak_main_idx = np.argmax(flux[f1_values])
+        peak_time = np.copy(time[peak_main_idx])
+        peak_flux = np.copy(flux[peak_main_idx])
 
-    # # flux_min_f2 = np.copy(np.min(flux[f2_values]))
-    # flux_max_f2 = np.copy(np.max(flux[f2_values]))
-    # flux_f2 = (flux[f2_values]) / flux_max_f2
+        time -= peak_time
 
-    plt.scatter(time[f1_values], flux_f1, s = 1, c = "tab:blue")
+        # Reshape the data so that the flux is between 0 and 1 micro Jy
+        # flux_fit_min_f1 = np.copy(np.min(flux_fit[f1_values_fit]))
+        flux_max_f1 = np.copy(np.max(flux[f1_values]))
+        flux_f1 = (flux[f1_values]) / flux_max_f1
 
-for idx in cluster_0[0]:
-    
-    f1 = "r"
-    f2 = "g"
+        # # flux_min_f2 = np.copy(np.min(flux[f2_values]))
+        # flux_max_f2 = np.copy(np.max(flux[f2_values]))
+        # flux_f2 = (flux[f2_values]) / flux_max_f2
 
-    time, flux, _, filters = load_ztf_data(fitting_parameters[idx, 0])
+        plt.scatter(time[f1_values], flux_f1, s = 1, c = "tab:blue")
 
-    f1_values = np.where(filters == f1)
-    f2_values = np.where(filters == f2)
+    for idx in cluster_0[0]:
+        
+        f1 = "r"
+        f2 = "g"
 
-    # Shift the light curve so that the main peak is at time = 0 MJD
-    peak_main_idx = np.argmax(flux[f1_values])
-    peak_time = np.copy(time[peak_main_idx])
-    peak_flux = np.copy(flux[peak_main_idx])
+        time, flux, _, filters = load_ztf_data(fitting_parameters[idx, 0])
 
-    time -= peak_time
+        f1_values = np.where(filters == f1)
+        f2_values = np.where(filters == f2)
 
-    # Reshape the data so that the flux is between 0 and 1 micro Jy
-    # flux_fit_min_f1 = np.copy(np.min(flux_fit[f1_values_fit]))
-    flux_max_f1 = np.copy(np.max(flux[f1_values]))
-    flux_f1 = (flux[f1_values]) / flux_max_f1
+        # Shift the light curve so that the main peak is at time = 0 MJD
+        peak_main_idx = np.argmax(flux[f1_values])
+        peak_time = np.copy(time[peak_main_idx])
+        peak_flux = np.copy(flux[peak_main_idx])
 
-    # # flux_min_f2 = np.copy(np.min(flux[f2_values]))
-    # flux_max_f2 = np.copy(np.max(flux[f2_values]))
-    # flux_f2 = (flux[f2_values]) / flux_max_f2
+        time -= peak_time
 
-    plt.scatter(time[f1_values], flux_f1, s = 1, c = "tab:orange")
+        # Reshape the data so that the flux is between 0 and 1 micro Jy
+        # flux_fit_min_f1 = np.copy(np.min(flux_fit[f1_values_fit]))
+        flux_max_f1 = np.copy(np.max(flux[f1_values]))
+        flux_f1 = (flux[f1_values]) / flux_max_f1
 
+        # # flux_min_f2 = np.copy(np.min(flux[f2_values]))
+        # flux_max_f2 = np.copy(np.max(flux[f2_values]))
+        # flux_f2 = (flux[f2_values]) / flux_max_f2
 
+        plt.scatter(time[f1_values], flux_f1, s = 1, c = "tab:orange")
 
-# %%
-# ["ZTF19aceqlxc", "ZTF19acykaae", "ZTF18aamftst"] in S23 as possible Ia-CSM and also in cluster 0
-# "ZTF19acvkibv" in S23 as possible Ia-CSM but not in cluster 0 0
 
-# ["2019kep"] in S23 as possible Ia-CSM 
-# Add well known SNe
 
-# mag_diff_15_r mag_diff_30_r duration_50_r duration_20_r mag_diff_15_g mag_diff_30_g duration_20_g
-# The shape of the light curve afterwards is important
-# Maybe it removes plateau LC
+    # %%
+    # ["ZTF19aceqlxc", "ZTF19acykaae", "ZTF18aamftst"] in S23 as possible Ia-CSM and also in cluster 0
+    # "ZTF19acvkibv" in S23 as possible Ia-CSM but not in cluster 0 0
 
+    # ["2019kep"] in S23 as possible Ia-CSM 
+    # Add well known SNe
 
-# Below t-SNE and UMAP
-# %%
-# # tSNE
+    # mag_diff_15_r mag_diff_30_r duration_50_r duration_20_r mag_diff_15_g mag_diff_30_g duration_20_g
+    # The shape of the light curve afterwards is important
+    # Maybe it removes plateau LC
 
-# def plot_tSNE(parameter_values, SN_type):
 
-#     model = TSNE(n_components = 2, random_state = 2804)
+    # Below t-SNE and UMAP
+    # %%
+    # # tSNE
 
-#     tsne_data = model.fit_transform(parameter_values)
-#     tsne_df = pd.DataFrame(data = tsne_data, columns = ("Dimension 1", "Dimension 2"))
-#     tsne_df["SN_type"] = SN_type
+    # def plot_tSNE(parameter_values, SN_type):
 
-#     plt.figure(figsize=(8, 6))
+    #     model = TSNE(n_components = 2, random_state = 2804)
 
-#     colors = ["tab:blue", "tab:orange", "tab:green", "tab:purple"]
-#     unique_labels = np.unique(SN_type)
-#     for i, lbl in enumerate(unique_labels):
+    #     tsne_data = model.fit_transform(parameter_values)
+    #     tsne_df = pd.DataFrame(data = tsne_data, columns = ("Dimension 1", "Dimension 2"))
+    #     tsne_df["SN_type"] = SN_type
 
-#         class_data = tsne_df[tsne_df["SN_type"] == lbl]
-#         plt.scatter(class_data["Dimension 1"], class_data["Dimension 2"], c = colors[i], label = lbl)
+    #     plt.figure(figsize=(8, 6))
 
-#     plt.title(f"t-SNE plot")
-#     plt.xlabel("Dimension 1")
-#     plt.ylabel("Dimension 2")
-#     plt.grid(alpha = 0.3)
-#     plt.legend()
-#     plt.show()
+    #     colors = ["tab:blue", "tab:orange", "tab:green", "tab:purple"]
+    #     unique_labels = np.unique(SN_type)
+    #     for i, lbl in enumerate(unique_labels):
 
-# # %%
+    #         class_data = tsne_df[tsne_df["SN_type"] == lbl]
+    #         plt.scatter(class_data["Dimension 1"], class_data["Dimension 2"], c = colors[i], label = lbl)
 
-# # UMAP
+    #     plt.title(f"t-SNE plot")
+    #     plt.xlabel("Dimension 1")
+    #     plt.ylabel("Dimension 2")
+    #     plt.grid(alpha = 0.3)
+    #     plt.legend()
+    #     plt.show()
 
-# def plot_UMAP(parameter_values, SN_type):
+    # # %%
 
-#     reducer = umap.UMAP(random_state = 2804)
+    # # UMAP
 
-#     UMAP_data = reducer.fit_transform(parameter_values)
+    # def plot_UMAP(parameter_values, SN_type):
 
-#     UMAP_df = pd.DataFrame(data = UMAP_data, columns = ("Dimension 1", "Dimension 2"))
-#     UMAP_df["SN_type"] = SN_type
+    #     reducer = umap.UMAP(random_state = 2804)
 
-#     plt.figure(figsize=(8, 6))
+    #     UMAP_data = reducer.fit_transform(parameter_values)
 
-#     colors = ["tab:blue", "tab:orange", "tab:green", "tab:purple"]
-#     unique_labels = np.unique(SN_type)
-#     for i, lbl in enumerate(unique_labels):
+    #     UMAP_df = pd.DataFrame(data = UMAP_data, columns = ("Dimension 1", "Dimension 2"))
+    #     UMAP_df["SN_type"] = SN_type
 
-#         class_data = UMAP_df[UMAP_df["SN_type"] == lbl]
-#         plt.scatter(class_data["Dimension 1"], class_data["Dimension 2"], c = colors[i], label = lbl)
+    #     plt.figure(figsize=(8, 6))
 
-#     plt.title(f"UMAP plot")
-#     plt.xlabel("Dimension 1")
-#     plt.ylabel("Dimension 2")
-#     plt.grid(alpha = 0.3)
-#     plt.legend()
-#     plt.show()
-    
+    #     colors = ["tab:blue", "tab:orange", "tab:green", "tab:purple"]
+    #     unique_labels = np.unique(SN_type)
+    #     for i, lbl in enumerate(unique_labels):
 
-# %%
-plt.hist(redshifts)
-# %%
+    #         class_data = UMAP_df[UMAP_df["SN_type"] == lbl]
+    #         plt.scatter(class_data["Dimension 1"], class_data["Dimension 2"], c = colors[i], label = lbl)
+
+    #     plt.title(f"UMAP plot")
+    #     plt.xlabel("Dimension 1")
+    #     plt.ylabel("Dimension 2")
+    #     plt.grid(alpha = 0.3)
+    #     plt.legend()
+    #     plt.show()
+        
+
+    # %%
+    plt.hist(redshifts)
+    # %%
