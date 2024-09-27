@@ -6,8 +6,8 @@ from parameter_reduction import determine_parameters, retrieve_redshift, calcula
 
 from sklearn.preprocessing import StandardScaler
 from sklearn import decomposition, metrics
-from sklearn.manifold import TSNE
-import umap.umap_ as umap
+# from sklearn.manifold import TSNE
+# import umap.umap_ as umap
 from sklearn.cluster import KMeans
 from sklearn.model_selection import ParameterGrid
 
@@ -311,24 +311,36 @@ if __name__ == '__main__':
     cluster_2 = np.where(kmeans.labels_ == 2)
     cluster_3 = np.where(kmeans.labels_ == 3)
 
-    # %%
+# %%
 
-    global_parameters_names_reduced = ["mag_diff_10_r", "mag_diff_15_r", \
-                            "mag_diff_30_r", "duration_50_r", "duration_20_r", \
-                            "mag_diff_10_g", "mag_diff_15_g", \
-                            "mag_diff_30_g", "duration_50_g", "duration_20_g"] #, "z"]
+    global_parameters_scaled_cluster_0 = scaler.fit_transform(global_parameters[cluster_0])
 
-    # global_parameters_redshift = np.concatenate((global_parameters, np.array(redshifts).reshape(len(SN_labels[]), 1)), axis = 1)
-
-    global_parameters_scaled_reduced = np.concatenate((global_parameters_scaled[:, 2:7], global_parameters_scaled[:, 9:]), axis = 1)
-
-    plot_PCA(global_parameters_scaled_reduced, SN_labels, global_parameters_names_reduced)
-    best_number = number_of_clusters(global_parameters_scaled_reduced)
+    plot_PCA(global_parameters_scaled_cluster_0, SN_labels[cluster_0], global_parameters_names)
+    best_number = number_of_clusters(global_parameters_scaled_cluster_0)
 
     kmeans = KMeans(n_clusters = best_number)
-    kmeans.fit(global_parameters_scaled_reduced)
+    kmeans.fit(global_parameters_scaled_cluster_0)
 
-    plot_PCA_with_clusters(global_parameters_scaled_reduced, SN_labels, kmeans, number_of_peaks)
+    plot_PCA_with_clusters(global_parameters_scaled_cluster_0, SN_labels[cluster_0], kmeans, number_of_peaks[cluster_0])
+
+    # %%
+
+    # global_parameters_names_reduced = ["mag_diff_10_r", "mag_diff_15_r", \
+    #                         "mag_diff_30_r", "duration_50_r", "duration_20_r", \
+    #                         "mag_diff_10_g", "mag_diff_15_g", \
+    #                         "mag_diff_30_g", "duration_50_g", "duration_20_g"] #, "z"]
+
+    # # global_parameters_redshift = np.concatenate((global_parameters, np.array(redshifts).reshape(len(SN_labels[]), 1)), axis = 1)
+
+    # global_parameters_scaled_reduced = np.concatenate((global_parameters_scaled[:, 2:7], global_parameters_scaled[:, 9:]), axis = 1)
+
+    # plot_PCA(global_parameters_scaled_reduced, SN_labels, global_parameters_names_reduced)
+    # best_number = number_of_clusters(global_parameters_scaled_reduced)
+
+    # kmeans = KMeans(n_clusters = best_number)
+    # kmeans.fit(global_parameters_scaled_reduced)
+
+    # plot_PCA_with_clusters(global_parameters_scaled_reduced, SN_labels, kmeans, number_of_peaks)
 
     # %%
 
@@ -339,15 +351,18 @@ if __name__ == '__main__':
     collection_times_f1, collection_times_f2, collection_fluxes_f1, collection_fluxes_f2 = plot_SN_collection(fitting_parameters, number_of_peaks)
 
     # %%
-    plt.scatter(np.array(collection_times_f1)[cluster_3], np.array(collection_fluxes_f1)[cluster_3], s = 1, label = "cluster 3")
-    plt.legend()
-    plt.show()
-    plt.scatter(np.array(collection_times_f1)[cluster_2], np.array(collection_fluxes_f1)[cluster_2], s = 1, label = "cluster 2")
-    plt.legend()
-    plt.show()
+
+    cluster_0 = np.where(kmeans.labels_ == 0)
+    cluster_1 = np.where(kmeans.labels_ == 1)
+    # plt.scatter(np.array(collection_times_f1)[cluster_3], np.array(collection_fluxes_f1)[cluster_3], s = 1, label = "cluster 3")
+    # plt.legend()
+    # plt.show()
+    # plt.scatter(np.array(collection_times_f1)[cluster_2], np.array(collection_fluxes_f1)[cluster_2], s = 1, label = "cluster 2")
+    # plt.legend()
+    # plt.show()
     plt.scatter(np.array(collection_times_f1)[cluster_1], np.array(collection_fluxes_f1)[cluster_1], s = 1, label = "cluster 1")
-    plt.legend()
-    plt.show()
+    # plt.legend()
+    # plt.show()
     plt.scatter(np.array(collection_times_f1)[cluster_0], np.array(collection_fluxes_f1)[cluster_0], s = 1, label = "cluster 0")
     plt.legend()
     plt.show()
@@ -485,3 +500,5 @@ if __name__ == '__main__':
     # %%
     plt.hist(redshifts)
     # %%
+
+# %%
