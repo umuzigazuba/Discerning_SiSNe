@@ -7,6 +7,6 @@
 <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
 </head>
 <body bgcolor="#cc99ff">
-<center><table border><caption><b></b></caption> <tr><th>             ra </th> <th>            dec </th> <th>        jdstart </th> <th>          jdend </th> <th>email </th></tr> <tr><td>     153.691079 </td> <td>      36.686511 </td> <td> 2460112.020000 </td> <td> 2460712.020000 </td> <td>umuzigazuba@strw.leidenuniv.nl </td></tr></table><br /><br />
+<center><table border><caption><b></b></caption> <tr><th>             ra </th> <th>            dec </th> <th>        jdstart </th> <th>          jdend </th> <th>email </th></tr> <tr><td>      10.758508 </td> <td>      -6.413297 </td> <td> 2459346.978843 </td> <td> 2459946.978843 </td> <td>umuzigazuba@strw.leidenuniv.nl </td></tr></table><br /><br />
 </body>
 </html>
