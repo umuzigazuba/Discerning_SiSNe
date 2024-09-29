@@ -53,6 +53,7 @@ def retrieve_ztf_data(ztf_id):
     
     return ra, dec, time_r, mag_r, magerr_r, time_g, mag_g, magerr_g
 
+# Conversion
 def ztf_magnitude_to_micro_flux(magnitude, magnitude_error):
 
     flux = np.power(10, -0.4 * (magnitude - 23.9))
@@ -64,6 +65,7 @@ def ztf_micro_flux_to_magnitude(flux):
     magnitude = -2.5 * np.log10(flux) + 23.9
     return magnitude
 
+# Load data saved in directory
 def load_ztf_data(ztf_id):
 
     time = []
@@ -115,6 +117,134 @@ def plot_ztf_data(ztf_id, time, flux, fluxerr, filters, save_fig = False):
 
 ### ATLAS ###
 
+# Generate data
+def retrieve_atlas_data(atlas_id):
+
+    # Load stacked and cleaned data 
+    atlas_data =  np.loadtxt(f"Data/ATLAS_forced_photometry_data/cleaned_and_stacked/{atlas_id}_atlas_fp_stacked_2_days.txt", delimiter = ",", dtype = str)
+
+    time = atlas_data[1:, 0].astype(np.float32)
+    flux = atlas_data[1:, 1].astype(np.float32)
+    fluxerr = atlas_data[1:, 2].astype(np.float32)
+    filter = atlas_data[1:, 3].astype(str)
+
+    return time, flux, fluxerr, filter
+
+def remove_noisy_data(time, flux, fluxerr, filter):
+
+    # Identify noisy observations
+    delete_flux = np.where(flux < - 100)
+    delete_flux_error = np.where(fluxerr > 40)
+    delete_indices = np.union1d(delete_flux, delete_flux_error)
+
+    time = np.delete(time, delete_indices)
+    flux = np.delete(flux, delete_indices)
+    fluxerr = np.delete(fluxerr, delete_indices)
+    filter = np.delete(filter, delete_indices)
+
+    return time, flux, fluxerr, filter
+
+# Baseline subtraction
+    # Has to be after cleaning because the peak needs to be determined
+    # Often highest value has large error and is probably background noise
+
+def find_baseline(time, flux, filter_f1, filter_f2):
+
+    past_and_future_epochs = {"Past Future f1":[], "Past Future f2":[], "First SN epoch f1":[], "Last SN epoch f1":[], "First SN epoch f2":[], "Last SN epoch f2":[]}
+
+    # Past
+    for filter_number, filter_idx in enumerate([filter_f1, filter_f2]):
+
+        time_filter, flux_filter = time[filter_idx], flux[filter_idx]
+
+        peak_idx = np.argmax(flux_filter)
+        num_to_cut = 0
+        
+        # Check if there is pre-peak data 
+        if peak_idx == 0:
+            past_and_future_epochs[f"First SN epoch f{filter_number + 1}"] = 0
+            continue
+
+        # Slope at which the data is no longer constant
+        m_cutoff = 0.2 * np.abs((flux_filter[0] - flux_filter[peak_idx]) / (time_filter[0] - time_filter[peak_idx]))
+
+        #Calculate the slope of all data before the peak
+        for cut_idx in range(1, peak_idx):
+
+            m = np.abs((flux_filter[0] - flux_filter[cut_idx]) / (time_filter[0] - time_filter[cut_idx]))
+
+            if m < m_cutoff:
+                num_to_cut = cut_idx
+
+        if num_to_cut > 0:
+            past_and_future_epochs[f"Past Future f{filter_number + 1}"].extend(np.arange(num_to_cut + 1))
+            past_and_future_epochs[f"First SN epoch f{filter_number + 1}"] = num_to_cut + 1
+
+        # There is no pre-supernova data
+        else:
+            past_and_future_epochs[f"First SN epoch f{filter_number + 1}"] = 0
+
+    # Future
+    for filter_number, filter_idx in enumerate([filter_f1, filter_f2]):
+
+        time_filter, flux_filter = time[filter_idx], flux[filter_idx]
+
+        peak_idx = np.argmax(flux_filter)
+        first_post_peak_idx = len(flux_filter) - np.argmax(flux_filter)
+        num_to_cut = 0
+        
+        # Check if there is post-peak data 
+        if peak_idx == len(flux_filter) - 1:
+            past_and_future_epochs[f"Last SN epoch f{filter_number + 1}"] = len(flux_filter) - 1
+            continue
+
+        # Slope at which the data is no longer constant
+        m_cutoff = 0.1 * np.abs((flux_filter[-1] - flux_filter[peak_idx]) / (time_filter[-1] - time_filter[peak_idx]))
+
+        #Calculate the slope of all data before the peak
+        for cut_idx in range(2, first_post_peak_idx):
+            
+            cut_idx *= -1
+            m = np.abs((flux_filter[-1] - flux_filter[cut_idx]) / (time_filter[-1] - time_filter[cut_idx]))
+
+            if m < m_cutoff:
+                num_to_cut = cut_idx
+
+        if np.abs(num_to_cut) > 0:
+            past_and_future_epochs[f"Past Future f{filter_number + 1}"].extend(np.arange(len(flux_filter) + num_to_cut, len(flux_filter)))
+            past_and_future_epochs[f"Last SN epoch f{filter_number + 1}"] = len(flux_filter) + num_to_cut - 1
+
+        # There is no post-supernova data
+        else:
+            past_and_future_epochs[f"Last SN epoch f{filter_number + 1}"] = len(flux_filter) - 1
+    
+    return past_and_future_epochs
+
+def subtract_baseline(flux, filter_f1, filter_f2, past_and_future_epochs):
+
+    if len(past_and_future_epochs["Past Future f1"]) != 0:
+
+        average_flux_baseline_f1 = np.mean(flux[past_and_future_epochs["Past Future f1"]])
+
+        flux[filter_f1] -= average_flux_baseline_f1
+
+    if len(past_and_future_epochs["Past Future f2"]) != 0:
+
+        average_flux_baseline_f2 = np.mean(flux[past_and_future_epochs["Past Future f2"]])
+
+        flux[filter_f2] -= average_flux_baseline_f2
+
+    return flux
+
+# Conversion
+def atlas_micro_flux_to_magnitude(flux, flux_error):
+
+    magnitude = -2.5 * np.log10(flux) + 23.9
+    magnitude_error = np.abs(-2.5 * (flux_error / (flux * np.log(10))))
+
+    return magnitude, magnitude_error
+
+# Load data saved in directory
 def load_atlas_data(atlas_id):
 
     time = []
@@ -140,6 +270,7 @@ def load_atlas_data(atlas_id):
 
     return np.array(time), np.array(flux), np.array(fluxerr), np.array(filters)
 
+# Plot data
 def plot_atlas_data(atlas_id, time_c, flux_c, fluxerr_c, time_o, flux_o, fluxerr_o, save_fig = False):
 
     if len(time_o) != 0:
@@ -204,27 +335,6 @@ def plot_data_augmentation(SN_id, passbands, passband2lam, augmentation_type, ti
                             t_approx = time_aug, flux_approx = flux_aug,
                             flux_err_approx = flux_err_aug, passband_approx = passband_aug, ax = ax,
                             title = f"Augmented light curve of SN {SN_id} using {augmentation_type}.")
-
-# %%
-
-# ZTF data
-
-ztf_id_sn_Ia_CSM= np.loadtxt("Data/ZTF_ID_SNe_Ia_CSM", delimiter = ",", dtype = "str")
-ztf_id_sn_IIn= np.loadtxt("Data/ZTF_ID_SNe_IIn", delimiter = ",", dtype = "str")
-
-ztf_id = np.concatenate((ztf_id_sn_Ia_CSM, ztf_id_sn_IIn))
-ztf_types = np.concatenate((np.zeros(len(ztf_id_sn_Ia_CSM)), np.ones(len(ztf_id_sn_IIn))))
-
-# ztf_id_sn_Ia_CSM = ["ZTF18abuatfp", "ZTF18actuhrs", "ZTF19aaeoqst", "ZTF19acbjddp", "ZTF20abmlxrx", "ZTF20abqkbfx", "ZTF20acqikeh", "ZTF21aaabwzx", "ZTF22aadgsdi", "ZTF22aaemvhi", "ZTF22aahgnxz", "ZTF22ablxcrh", "ZTF23aaazegi", "ZTF23aacdnjz", "ZTF23aagpjyp", "ZTF23aamsekn", "ZTF23aatabje", "ZTF23aaynmrz", "ZTF23abgnvya"]
-# ztf_id_sn_IIn = ["ZTF18aadmssd", "ZTF18aakrnvd", "ZTF18aamftst", "ZTF18aarasof", "ZTF18aauenwu", "ZTF18aavskep", "ZTF18aaxjuwy", "ZTF18aaxxfgs", "ZTF18ablqehq", "ZTF18abltfho", "ZTF18abtswjk", "ZTF18abucxcj", "ZTF18abvgjgb", "ZTF18abxbhov", "ZTF18acbwvsp", "ZTF18accdzju", "ZTF18accnfrz", "ZTF18acjpret", "ZTF18acpsrtc", "ZTF18acsulmu", "ZTF18acvgjqv", "ZTF18acwzyor", "ZTF18aczuooo", "ZTF18adbmrug", "ZTF19aacjbsj", "ZTF19aadgimr", "ZTF19aaerbzy", "ZTF19aaezale", "ZTF19aaksxgp", "ZTF19aamkmxv", "ZTF19aanfqug", "ZTF19aanqzhm", "ZTF19aaozsuh", "ZTF19aapzbjr", "ZTF19aaqasrq", "ZTF19aarxrem", "ZTF19aasekcx", "ZTF19aavjukt", "ZTF19aavyvbn", "ZTF19aaxeaag", "ZTF19abandzh", "ZTF19abcejfo", "ZTF19abdviwl", "ZTF19abecaca", "ZTF19abegxfs", "ZTF19abgndlf", "ZTF19abirfmc", "ZTF19abiszoe", "ZTF19abjacdu", "ZTF19ablojrw", "ZTF19ablzora", "ZTF19abpidqn", "ZTF19abstsvm", "ZTF19abulzhy", "ZTF19abzmmvz", "ZTF19abzpvaj", "ZTF19acapech", "ZTF19aceqlxc", "ZTF19acftude", "ZTF19acjutrw", "ZTF19ackbclh", "ZTF19actabny", "ZTF19acukucu", "ZTF19acvkibv", "ZTF19acxmnkc", "ZTF19acxqaot", "ZTF19acyjviz", "ZTF19acyjysk", "ZTF19acykaae", "ZTF19acyldun", "ZTF19adalarj", "ZTF19adannbl", "ZTF20aaaddgy", "ZTF20aaaweke", "ZTF20aabcemq", "ZTF20aacbyec", "ZTF20aadtarr", "ZTF20aadxrvb", "ZTF20aadyyvk", "ZTF20aahapgw", "ZTF20aajvyja", "ZTF20aammdfk", "ZTF20aamrreb", "ZTF20aartnkv", "ZTF20aasivpe", "ZTF20aaswzdm", "ZTF20aattztb", "ZTF20aaurfwa", "ZTF20aavhixe", "ZTF20aawijco", "ZTF20aayvmyh", "ZTF20aazffau", "ZTF20abonvte", "ZTF20abpmqnr", "ZTF20abqgbum", "ZTF20abtjjhb", "ZTF20abyxjvm", "ZTF20abzjoxd", "ZTF20acbekkx", "ZTF20aceokvr", "ZTF20acggqfs", "ZTF20acghodf", "ZTF20achjwqt", "ZTF20acklcyp", "ZTF20aclkvjy", "ZTF20acnvniw", "ZTF20acoawtj", "ZTF20acounxo", "ZTF20acqgklx", "ZTF20acqnfzn", "ZTF20acqqdkl", "ZTF20actkulc", "ZTF20acusylb", "ZTF20acveyyv", "ZTF20acwobku", "ZTF20acxmxtu", "ZTF20aczgmai", "ZTF21aaabxbd", "ZTF21aaffxdt", "ZTF21aagnqnz", "ZTF21aahfjrr", "ZTF21aakupth", "ZTF21aaoqbbw", "ZTF21aaowaxx", "ZTF21aappkns", "ZTF21aaqhqke", "ZTF21aaradzm", "ZTF21aarcobt", "ZTF21aatwkkg", "ZTF21aautijg", "ZTF21aavuqzr", "ZTF21aaxtije", "ZTF21aaydxoo", "ZTF21aaygmrl", "ZTF21aazgkjf", "ZTF21abccdld", "ZTF21abebgfr", "ZTF21abghumo", "ZTF21abgjldn", "ZTF21abgzyvg", "ZTF21abhibro", "ZTF21abhqqfa", "ZTF21abiwpjm", "ZTF21abjhiqp", "ZTF21abjvukz", "ZTF21abpmlxu", "ZTF21abpxquj", "ZTF21abtdvpg", "ZTF21abtorlk", "ZTF21abujgmr", "ZTF21abulpnc", "ZTF21abxlmuw", "ZTF21abxtfwo", "ZTF21accgsbf", "ZTF21acckcni", "ZTF21acpkzcc", "ZTF21acpoujw", "ZTF22aaabzju", "ZTF22aaajbnz", "ZTF22aabwemz", "ZTF22aabxuxf", "ZTF22aadesjc", "ZTF22aaetqzk", "ZTF22aafnzvd", "ZTF22aagvtzz", "ZTF22aagvxjc", "ZTF22aahedwz", "ZTF22aajcupz", "ZTF22aajjojx", "ZTF22aanesux", "ZTF22aanjyae", "ZTF22aanwibf", "ZTF22aaohilj", "ZTF22aapkbkl", "ZTF22aapmawo", "ZTF22aarrawv", "ZTF22aasoali", "ZTF22aasudqv", "ZTF22aatfjcy", "ZTF22aawfeov", "ZTF22aazbxmi", "ZTF22abajyqm", "ZTF22abcesfo", "ZTF22abeyzcl", "ZTF22abfnfud", "ZTF22abfyvhf", "ZTF22abghrui", "ZTF22abhclyh", "ZTF22abhwlnm", "ZTF22abiupzw", "ZTF22abizuah", "ZTF22abnfjsm", "ZTF22abqseiq", "ZTF22abtcpig", "ZTF22abtsypf", "ZTF22abxltfq", "ZTF22abzgbtq", "ZTF23aaabzea", "ZTF23aaakein", "ZTF23aaarwbd", "ZTF23aaavyag", "ZTF23aablgzj", "ZTF23aabvcmb", "ZTF23aaczpkm", "ZTF23aaczunw", "ZTF23aadchqd", "ZTF23aadtvmb", "ZTF23aaecexq", "ZTF23aajjzbm", "ZTF23aajkisd", "ZTF23aalgqsq", "ZTF23aamanim", "ZTF23aamshoi", "ZTF23aansdlc", "ZTF23aaohqcn", "ZTF23aapsuva", "ZTF23aaqmauw", "ZTF23aaquolj", "ZTF23aatdcey", "ZTF23aavmthe", "ZTF23aavvckk", "ZTF23aaxldkr", "ZTF23aayngri", "ZTF23abfglcy", "ZTF23abgnxri", "ZTF23abjhwem", "ZTF23abjikaf", "ZTF23abjvuwc", "ZTF23abkhwgb", "ZTF23abkphfu", "ZTF23ablutgq", "ZTF23abomtge", "ZTF23abpznvm", "ZTF23abqimmw", "ZTF23abqrshk", "ZTF23abrydus", "ZTF23absdibx", "ZTF24aaabljq", "ZTF24aaejwvu", "ZTF24aaennqr", "ZTF24aaerzgz", "ZTF24aafqxmg"]     
-
-# ATLAS data
-
-atlas_id_sn_Ia_CSM = np.loadtxt("Data/ATLAS_ID_SNe_Ia_CSM", delimiter = ",", dtype = "str")
-atlas_id_sn_IIn = np.loadtxt("Data/ATLAS_ID_SNe_IIn", delimiter = ",", dtype = "str")
-
-atlas_id = np.concatenate((atlas_id_sn_Ia_CSM, atlas_id_sn_IIn))
-# discovery_dates = np.loadtxt("Data/OLD_ATLAS_data/sninfo.txt", skiprows = 1, usecols = (0, 3), dtype = "str")
 
 # %%
 
