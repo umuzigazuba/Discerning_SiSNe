@@ -1,10 +1,11 @@
 # %% 
 
-from antares_client.search import get_by_ztf_object_id
-import fulu
 from astropy.coordinates import SkyCoord
+from astropy import units as u
 from dustmaps.sfd import SFDQuery
-import extinction
+from extinction import fm07, apply
+
+import fulu
 from sklearn.gaussian_process.kernels import (RBF, Matern, 
       WhiteKernel, ConstantKernel as C)
 
@@ -20,69 +21,109 @@ plt.rcParams["text.usetex"] = True
 ### ZTF ###
 
 # Generate data
-def retrieve_ztf_data(ztf_id):
+def ztf_retrieve_data(ztf_name):
 
-    data = get_by_ztf_object_id(ztf_id)
+    with open(f"Data/ZTF_forced_photometry_data/{ztf_name}.txt") as f:
 
-    ra = data.ra
-    dec = data.dec
+        # Ignore lines with parameter explenation
+        lines = (line for line in f if not line.startswith('#'))
 
-    valid_data_r = np.where((data.lightcurve["ant_passband"].to_numpy() == "R") & (~np.isnan(data.lightcurve["ant_mag"].to_numpy())))[0]
+        # Ignore line with parameter names
+        ztf_data = np.genfromtxt(lines, skip_header = 1, missing_values = "null", dtype = "str")
 
-    if len(valid_data_r != 0):
-        time_r = data.lightcurve["ant_mjd"].to_numpy()[valid_data_r]
-        mag_r = data.lightcurve["ant_mag"].to_numpy()[valid_data_r]
-        magerr_r = data.lightcurve["ant_magerr"].to_numpy()[valid_data_r]
-        
-    else:
-        time_r = np.array([])
-        mag_r = np.array([])
-        magerr_r = np.array([])
+    # Supernova data
+    time = np.array(ztf_data[:, 22])
+    flux = np.array(ztf_data[:, 24])
+    fluxerr = np.array(ztf_data[:, 25])
+    filter = np.array(ztf_data[:, 4])
 
-    valid_data_g = np.where((data.lightcurve["ant_passband"].to_numpy() == "g") & (~np.isnan(data.lightcurve["ant_mag"].to_numpy())))[0]
+    # Parameters used to identify noisy/bad data
+    infobitssci = np.array(ztf_data[:, 6]).astype(np.float32)
+    scisigpix = np.array(ztf_data[:, 9]).astype(np.float32)
+    sciinpseeing = np.array(ztf_data[:, 7]).astype(np.float32)
+    status = np.array(ztf_data[:, -1]).astype(np.int32)
 
-    if len(valid_data_g != 0):
-        time_g = data.lightcurve["ant_mjd"].to_numpy()[valid_data_g]
-        mag_g = data.lightcurve["ant_mag"].to_numpy()[valid_data_g]
-        magerr_g = data.lightcurve["ant_magerr"].to_numpy()[valid_data_g]
-        
-    else:
-        time_g = np.array([])
-        mag_g = np.array([])
-        magerr_g = np.array([])
+    zero_point = np.array(ztf_data[:, 20])
+    reduced_chi_squared = np.array(ztf_data[:, 27])
+
+    return time, flux, fluxerr, filter, infobitssci, scisigpix, \
+           sciinpseeing, status, zero_point, reduced_chi_squared
+
+# Remove noisy/bad observations
+def ztf_remove_noisy_data(time, flux, fluxerr, filter, infobitssci, scisigpix, sciinpseeing, status, zero_point, reduced_chi_squared):
+
+    # Filter out bad processing epochs
+    bad_observations = np.where(((status != 0) & (status != 56) & (status != 57) & (status != 62) & (status != 65)))
     
-    return ra, dec, time_r, mag_r, magerr_r, time_g, mag_g, magerr_g
+    # Filter out data with missing flux measurements
+    missing_data = np.where(flux == "null")[0]
+
+    # Filter out data of a bad quality (possibly contaminated by clouds or the moon)
+    bad_infobitssci = np.where(infobitssci > 0)[0]
+    bad_scisigpix = np.where(scisigpix > 25)[0]
+    bad_sciinpseeing = np.where(sciinpseeing > 4)[0]
+
+    indices_to_delete = np.sort(np.unique(np.concatenate((bad_observations, missing_data, bad_infobitssci, bad_scisigpix, bad_sciinpseeing))))
+
+    # Remove the bad observations
+    time = np.delete(time, indices_to_delete).astype(np.float32) -  2400000.5
+    flux = np.delete(flux, indices_to_delete).astype(np.float32) / 10 # divide by ten to convert to micro Jansky
+    fluxerr = np.delete(fluxerr, indices_to_delete).astype(np.float32) / 10 # divide by ten to convert to micro Jansky
+    filter = np.delete(filter, indices_to_delete)
+
+    zero_point = np.delete(zero_point, indices_to_delete).astype(np.float32)
+    reduced_chi_squared = np.delete(reduced_chi_squared, indices_to_delete).astype(np.float32)
+
+    return time, flux, fluxerr, filter, \
+           zero_point, reduced_chi_squared
+
+# Check if the flux uncertainties need to be rescaled/are good estimations
+def check_flux_uncertainties(fluxerr, reduced_chi_squared):
+
+    average_reduced_chi_squared = np.mean(reduced_chi_squared)
+
+    if not np.isclose(average_reduced_chi_squared, 1, 0.5):
+
+        fluxerr *= np.sqrt(average_reduced_chi_squared)
+
+    return fluxerr
 
 # Conversion
-def ztf_magnitude_to_micro_flux(magnitude, magnitude_error):
+def ztf_flux_to_magnitude(flux, fluxerr, zero_point):
 
-    flux = np.power(10, -0.4 * (magnitude - 23.9))
-    flux_error = 0.4 * np.log(10) * magnitude_error * flux
-    return flux, flux_error
+    mag = np.empty(len(flux))
+    magerr = np.empty(len(flux))
 
-def ztf_micro_flux_to_magnitude(flux):
+    confident_detections = flux / fluxerr > 3
 
-    magnitude = -2.5 * np.log10(flux) + 23.9
-    return magnitude
+    # Confident detections
+    mag[confident_detections] = zero_point[confident_detections] - 2.5 * np.log10(10 * flux[confident_detections])
+    magerr[confident_detections] = 1.0857 * fluxerr[confident_detections] / flux[confident_detections]
+
+    # Non-detections
+    mag[~confident_detections] = zero_point[~confident_detections] - 2.5 * np.log10(10 * 5 * fluxerr[~confident_detections])
+    magerr[~confident_detections] = 0
+
+    return mag, magerr, confident_detections
 
 # Load data saved in directory
-def load_ztf_data(ztf_id):
+def ztf_load_data(ztf_name):
 
     time = []
     flux = []
     fluxerr = []
     filters = []
 
-    if os.path.isdir(f"Data/ZTF_data/{ztf_id}/r/"):
-        ztf_data_r = np.load(f"Data/ZTF_data/{ztf_id}/r/.npy")
+    if os.path.isdir(f"Data/ZTF_data/{ztf_name}/r/"):
+        ztf_data_r = np.load(f"Data/ZTF_data/{ztf_name}/r/.npy")
 
         time.extend(ztf_data_r[0])
         flux.extend(ztf_data_r[1])
         fluxerr.extend(ztf_data_r[2])
         filters.extend(["r"] * len(ztf_data_r[0]))
 
-    if os.path.isdir(f"Data/ZTF_data/{ztf_id}/g/"):
-        ztf_data_g = np.load(f"Data/ZTF_data/{ztf_id}/g/.npy")
+    if os.path.isdir(f"Data/ZTF_data/{ztf_name}/g/"):
+        ztf_data_g = np.load(f"Data/ZTF_data/{ztf_name}/g/.npy")
 
         time.extend(ztf_data_g[0])
         flux.extend(ztf_data_g[1])
@@ -92,7 +133,7 @@ def load_ztf_data(ztf_id):
     return np.array(time), np.array(flux), np.array(fluxerr), np.array(filters)
 
 # Plot data
-def plot_ztf_data(ztf_id, time, flux, fluxerr, filters, save_fig = False):
+def ztf_plot_data(ztf_name, time, flux, fluxerr, filters, save_fig = False):
 
     if "r" in filters:
         r_values = np.where(filters == "r")
@@ -104,11 +145,11 @@ def plot_ztf_data(ztf_id, time, flux, fluxerr, filters, save_fig = False):
 
     plt.xlabel("Modified Julian Date", fontsize = 13)
     plt.ylabel("Flux $(\mu Jy)$", fontsize = 13)
-    plt.title(f"Light curve of SN {ztf_id}.")
+    plt.title(f"Light curve of SN {ztf_name}.")
     plt.grid(alpha = 0.3)
     plt.legend()
     if save_fig:
-        plt.savefig(f"Plots/ZTF_lightcurves_plots/ZTF_data_{ztf_id}", dpi = 300)
+        plt.savefig(f"Plots/ZTF_lightcurves/Light_curve_{ztf_name}", dpi = 300)
         plt.close()
     else:
         plt.show()
@@ -118,10 +159,10 @@ def plot_ztf_data(ztf_id, time, flux, fluxerr, filters, save_fig = False):
 ### ATLAS ###
 
 # Generate data
-def retrieve_atlas_data(atlas_id):
+def atlas_retrieve_data(atlas_name):
 
     # Load stacked and cleaned data 
-    atlas_data =  np.loadtxt(f"Data/ATLAS_forced_photometry_data/cleaned_and_stacked/{atlas_id}_atlas_fp_stacked_2_days.txt", delimiter = ",", dtype = str)
+    atlas_data =  np.loadtxt(f"Data/ATLAS_forced_photometry_data/cleaned_and_stacked/{atlas_name}_atlas_fp_stacked_2_days.txt", delimiter = ",", dtype = str)
 
     time = atlas_data[1:, 0].astype(np.float32)
     flux = atlas_data[1:, 1].astype(np.float32)
@@ -130,7 +171,8 @@ def retrieve_atlas_data(atlas_id):
 
     return time, flux, fluxerr, filter
 
-def remove_noisy_data(time, flux, fluxerr, filter):
+# Remove noisy/bad observations
+def atlas_remove_noisy_data(time, flux, fluxerr, filter):
 
     # Identify noisy observations
     delete_flux = np.where(flux < - 100)
@@ -143,6 +185,64 @@ def remove_noisy_data(time, flux, fluxerr, filter):
     filter = np.delete(filter, delete_indices)
 
     return time, flux, fluxerr, filter
+
+# Conversion
+def atlas_micro_flux_to_magnitude(flux, fluxerr):
+
+    magnitude = -2.5 * np.log10(flux) + 23.9
+    magnitude_error = np.abs(-2.5 * (fluxerr / (flux * np.log(10))))
+
+    return magnitude, magnitude_error
+
+# Load data saved in directory
+def atlas_load_data(atlas_name):
+
+    time = []
+    flux = []
+    fluxerr = []
+    filters = []
+
+    if os.path.isdir(f"Data/ATLAS_data/forced_photometry/{atlas_name}/o/"):
+        atlas_data_o = np.load(f"Data/ATLAS_data/forced_photometry/{atlas_name}/o/.npy")
+
+        time.extend(atlas_data_o[0])
+        flux.extend(atlas_data_o[1])
+        fluxerr.extend(atlas_data_o[2])
+        filters.extend(["o"] * len(atlas_data_o[0]))
+
+    if os.path.isdir(f"Data/ATLAS_data/forced_photometry/{atlas_name}/c/"):
+        atlas_data_c = np.load(f"Data/ATLAS_data/forced_photometry/{atlas_name}/c/.npy")
+
+        time.extend(atlas_data_c[0])
+        flux.extend(atlas_data_c[1])
+        fluxerr.extend(atlas_data_c[2])
+        filters.extend(["c"] * len(atlas_data_c[0]))
+
+    return np.array(time), np.array(flux), np.array(fluxerr), np.array(filters)
+
+# Plot data
+def atlas_plot_data(atlas_name, time_c, flux_c, fluxerr_c, time_o, flux_o, fluxerr_o, save_fig = False):
+
+    if len(time_o) != 0:
+        plt.errorbar(time_o, flux_o, yerr = fluxerr_o, fmt = "o", markersize = 4, capsize = 2, color = "tab:blue", label = "Band: o")
+
+    if len(time_c) != 0:
+        plt.errorbar(time_c, flux_c, yerr = fluxerr_c, fmt = "o", markersize = 4, capsize = 2, color = "tab:orange", label = "Band: c")
+
+    plt.xlabel("Modified Julian Date", fontsize = 13)
+    plt.ylabel("Flux $(\mu Jy)$", fontsize = 13)
+    plt.title(f"Light curve of SN {atlas_name}.")
+    plt.grid(alpha = 0.3)
+    plt.legend()
+    if save_fig:
+        plt.savefig(f"Plots/ATLAS_lightcurves/Light_curve_{atlas_name}", dpi = 300)
+        plt.close()
+    else:
+        plt.show()
+
+# %%
+
+### General ###
 
 # Baseline subtraction
     # Has to be after cleaning because the peak needs to be determined
@@ -236,127 +336,122 @@ def subtract_baseline(flux, filter_f1, filter_f2, past_and_future_epochs):
 
     return flux
 
-# Conversion
-def atlas_micro_flux_to_magnitude(flux, flux_error):
-
-    magnitude = -2.5 * np.log10(flux) + 23.9
-    magnitude_error = np.abs(-2.5 * (flux_error / (flux * np.log(10))))
-
-    return magnitude, magnitude_error
-
-# Load data saved in directory
-def load_atlas_data(atlas_id):
-
-    time = []
-    flux = []
-    fluxerr = []
-    filters = []
-
-    if os.path.isdir(f"Data/ATLAS_data/forced_photometry/{atlas_id}/o/"):
-        atlas_data_o = np.load(f"Data/ATLAS_data/forced_photometry/{atlas_id}/o/.npy")
-
-        time.extend(atlas_data_o[0])
-        flux.extend(atlas_data_o[1])
-        fluxerr.extend(atlas_data_o[2])
-        filters.extend(["o"] * len(atlas_data_o[0]))
-
-    if os.path.isdir(f"Data/ATLAS_data/forced_photometry/{atlas_id}/c/"):
-        atlas_data_c = np.load(f"Data/ATLAS_data/forced_photometry/{atlas_id}/c/.npy")
-
-        time.extend(atlas_data_c[0])
-        flux.extend(atlas_data_c[1])
-        fluxerr.extend(atlas_data_c[2])
-        filters.extend(["c"] * len(atlas_data_c[0]))
-
-    return np.array(time), np.array(flux), np.array(fluxerr), np.array(filters)
-
-# Plot data
-def plot_atlas_data(atlas_id, time_c, flux_c, fluxerr_c, time_o, flux_o, fluxerr_o, save_fig = False):
-
-    if len(time_o) != 0:
-        plt.errorbar(time_o, flux_o, yerr = fluxerr_o, fmt = "o", markersize = 4, capsize = 2, color = "tab:blue", label = "Band: o")
-
-    if len(time_c) != 0:
-        plt.errorbar(time_c, flux_c, yerr = fluxerr_c, fmt = "o", markersize = 4, capsize = 2, color = "tab:orange", label = "Band: c")
-
-    plt.xlabel("Modified Julian Date", fontsize = 13)
-    plt.ylabel("Flux $(\mu Jy)$", fontsize = 13)
-    plt.title(f"Light curve of SN {atlas_id}.")
-    plt.grid(alpha = 0.3)
-    plt.legend()
-    if save_fig:
-        plt.savefig(f"Plots/ATLAS_lightcurves_plots/forced_photometry/ATLAS_data_{atlas_id}", dpi = 300)
-        plt.close()
-    else:
-        plt.show()
-
-# %%
-
-### Light curve approximation ###
-
-def data_augmentation(survey, time, flux, fluxerr, filters, augmentation_type):
-
-    if survey == "ZTF":
-        passband2lam = {'r': np.log10(6366.38), 'g': np.log10(4746.48)}
-
-    elif survey == "ATLAS":
-        passband2lam = {'o': np.log10(6629.82), 'c': np.log10(5182.42)}
+# Return the flux corrected for Milky Way extinction
+def milky_way_extinction(ra, dec, flux, filter_wavelength):
     
-    else:
-        print("ERROR: the options for survey are \"ZTF\" and \"ATLAS\".")
-        return None
-    
-    passbands = filters
-    if augmentation_type == "GP":
-        augmentation = fulu.GaussianProcessesAugmentation(passband2lam, C(1.0)*Matern() * RBF([1, 1]) + Matern() + WhiteKernel())
+    sfd = SFDQuery()
+    coordinates = SkyCoord(ra, dec, unit = (u.hourangle, u.deg))
 
-    elif augmentation_type == "MLP":
-        augmentation = fulu.MLPRegressionAugmentation(passband2lam)
-    
-    elif augmentation_type == "NF":
-        augmentation = fulu.NormalizingFlowAugmentation(passband2lam)
-    
-    elif augmentation_type == "BNN":
-        augmentation = fulu.BayesianNetAugmentation(passband2lam)
-    
-    else:
-        print("ERROR: the options for augmentation_type are \"GP\", \"MLP\", \"NF\"and \"BNN\".")
-        return None
+    MW_EBV = sfd(coordinates)
+    Av = 2.742 * MW_EBV
 
-    augmentation.fit(time, flux, fluxerr, passbands)
+    filter_wavelength = 1.0 / (0.0001 * np.array([filter_wavelength]))
 
-    return passbands, passband2lam, augmentation
+    flux = apply(fm07(filter_wavelength, Av), flux)
 
-def plot_data_augmentation(SN_id, passbands, passband2lam, augmentation_type, time, flux,
-                           fluxerr, time_aug, flux_aug, flux_err_aug, passband_aug, ax): 
+    return flux
 
-    plot = fulu.LcPlotter(passband2lam)
-    plot.plot_one_graph_all(t = time, flux = flux, flux_err = fluxerr, passbands = passbands,
-                            t_approx = time_aug, flux_approx = flux_aug,
-                            flux_err_approx = flux_err_aug, passband_approx = passband_aug, ax = ax,
-                            title = f"Augmented light curve of SN {SN_id} using {augmentation_type}.")
+# Return the time corrected for time dilation
+def time_dilation(time, redschift):
+
+    time *= 1 / (1 + redschift)
+
+    return time 
 
 # %%
 
 ### Data processing ###
 
-## Small light curves + light curve clipping: 
+def data_processing(survey, SN_names):
 
+    if survey == "ZTF":
 
-def get_magnitude_extinction(magnitude, ra, dec, wavelength):
+            f1 = "r"
+            f2 = "g"
 
-    
-    sfd = SFDQuery()
-    coordinates = SkyCoord(ra, dec, frame = "icrs", unit = "deg")
+            f1_wavelength = 6366.38
+            f2_wavelength = 4746.48
 
-    MW_EBV = sfd(coordinates)
-    Av = 2.742 * MW_EBV
+            survey_information = pd.read_csv("Data/ZTF_info.csv")
 
-    wavelength = 1.0 / (0.0001 * np.array([wavelength]))
+    elif survey == "ATLAS":
 
-    delta_mag = extinction.fm07(wavelength, Av, unit = "invum")
+            f1 = "o"
+            f2 = "c"
 
-    return magnitude - delta_mag
+            f1_wavelength = 6629.83
+            f2_wavelength = 5182.42
+
+            survey_information = pd.read_csv("Data/ATLAS_info.csv")
+
+    else:
+            ValueError("The survey variable must be either 'ZTF' or 'ATLAS'.")
+
+    for name in SN_names:
+
+        if survey == "ZTF":
+
+            # Retrieve the data
+            time, flux, fluxerr, filter, infobitssci, scisigpix, sciinpseeing, status, zero_point, reduced_chi_squared = ztf_retrieve_data(name)
+
+            # Retrieve supernova properties
+            SN_idx = np.where(survey_information["Name"] == name)
+
+            ra = survey_information["RA"].values[SN_idx]
+            dec = survey_information["DEC"].values[SN_idx]
+            redschift = survey_information["Redshift"].values[SN_idx]
+
+            # Remove noisy/bad observations
+            time, flux, fluxerr, filter, zero_point, reduced_chi_squared = ztf_remove_noisy_data(time, flux, fluxerr, filter, infobitssci, scisigpix, sciinpseeing, status, zero_point, reduced_chi_squared)
+
+            # Filter the data based on the used filter
+            filter_f1 = np.where(filter == f"ZTF_{f1}")
+            filter_f2 = np.where(filter == f"ZTF_{f2}")
+
+            # Adjust the baseline to flux = 0
+            past_and_future = find_baseline(time, flux, filter_f1, filter_f2)
+            flux = subtract_baseline(flux, filter_f1, filter_f2, past_and_future)
+
+            fluxerr = check_flux_uncertainties(fluxerr, reduced_chi_squared)
+
+            # Apply Milky Way extraction
+            flux[filter_f1] = milky_way_extinction(ra, dec, flux[filter_f1], f1_wavelength)
+            flux[filter_f2] = milky_way_extinction(ra, dec, flux[filter_f2], f2_wavelength)
+
+            # Apply time dilation
+            time = time_dilation(time, redschift)
+
+        elif survey == "ATLAS":
+
+            # Retrieve the data
+            time, flux, fluxerr, filter = atlas_retrieve_data(name)
+
+            # Retrieve supernova properties
+            SN_idx = np.where(survey_information["Name"] == name)
+
+            ra = survey_information["RA"].values[SN_idx]
+            dec = survey_information["DEC"].values[SN_idx]
+            redschift = survey_information["Redshift"].values[SN_idx]
+
+            # Remove noisy/bad observations
+            time, flux, fluxerr, filter = atlas_remove_noisy_data(time, flux, fluxerr, filter)
+
+            # Filter the data based on the used filter
+            filter_f1 = np.where(filter == f1)
+            filter_f2 = np.where(filter == f2)
+
+            # Adjust the baseline to flux = 0
+            past_and_future = find_baseline(time, flux, filter_f1, filter_f2)
+            flux = subtract_baseline(flux, filter_f1, filter_f2, past_and_future)
+
+            # Apply Milky Way extraction
+            flux[filter_f1] = milky_way_extinction(ra, dec, flux[filter_f1], f1_wavelength)
+            flux[filter_f2] = milky_way_extinction(ra, dec, flux[filter_f2], f2_wavelength)
+
+            # Apply time dilation
+            time = time_dilation(time, redschift)
+       
+            
 
 def OLD_data_processing(survey, SN_names):
 
@@ -623,7 +718,53 @@ def data_processing_atlas(SN_names):
 
         plot_atlas_data(SN_id, time[filter_c], flux[filter_c], fluxerr[filter_c], \
                         time[filter_o], flux[filter_o], fluxerr[filter_o], save_fig = True)
-        
+
+# %%
+
+### Light curve approximation ###
+
+def data_augmentation(survey, time, flux, fluxerr, filters, augmentation_type):
+
+    if survey == "ZTF":
+        passband2lam = {'r': np.log10(6366.38), 'g': np.log10(4746.48)}
+
+    elif survey == "ATLAS":
+        passband2lam = {'o': np.log10(6629.82), 'c': np.log10(5182.42)}
+    
+    else:
+        print("ERROR: the options for survey are \"ZTF\" and \"ATLAS\".")
+        return None
+    
+    passbands = filters
+    if augmentation_type == "GP":
+        augmentation = fulu.GaussianProcessesAugmentation(passband2lam, C(1.0)*Matern() * RBF([1, 1]) + Matern() + WhiteKernel())
+
+    elif augmentation_type == "MLP":
+        augmentation = fulu.MLPRegressionAugmentation(passband2lam)
+    
+    elif augmentation_type == "NF":
+        augmentation = fulu.NormalizingFlowAugmentation(passband2lam)
+    
+    elif augmentation_type == "BNN":
+        augmentation = fulu.BayesianNetAugmentation(passband2lam)
+    
+    else:
+        print("ERROR: the options for augmentation_type are \"GP\", \"MLP\", \"NF\"and \"BNN\".")
+        return None
+
+    augmentation.fit(time, flux, fluxerr, passbands)
+
+    return passbands, passband2lam, augmentation
+
+def plot_data_augmentation(SN_id, passbands, passband2lam, augmentation_type, time, flux,
+                           fluxerr, time_aug, flux_aug, flux_err_aug, passband_aug, ax): 
+
+    plot = fulu.LcPlotter(passband2lam)
+    plot.plot_one_graph_all(t = time, flux = flux, flux_err = fluxerr, passbands = passbands,
+                            t_approx = time_aug, flux_approx = flux_aug,
+                            flux_err_approx = flux_err_aug, passband_approx = passband_aug, ax = ax,
+                            title = f"Augmented light curve of SN {SN_id} using {augmentation_type}.")
+       
 # %%
 
 def test():
