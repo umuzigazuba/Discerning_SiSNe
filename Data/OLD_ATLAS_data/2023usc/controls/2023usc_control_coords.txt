@@ -1,4 +1,0 @@
-tnsname control_id          ra        dec   ra_offset  dec_offset radius_arcsec n_detec n_detec_o n_detec_c
-2023usc          0 80.38187500 0.47241944           0           0             0    3016      2320       696
-    NaN          1 80.37715262 0.47241944 -0.00472238  0.00000000          17.0    3015      2319       696
-    NaN          2 80.38659738 0.47241944  0.00472238 -0.00000000          17.0    3014      2318       696
