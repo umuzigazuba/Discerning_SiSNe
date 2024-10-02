@@ -130,3 +130,23 @@ for idx in range(1):
     dfresult = pd.read_csv(StringIO(textdata.replace("###", "")), delim_whitespace=True)
     dfresult.to_csv(f"Data/ATLAS_data/{SN_name[idx]}.csv")
 
+
+# %%
+import subprocess
+import os
+
+# Specify the directory where the files are located
+directory = "raw"
+
+# Loop through each file in the directory
+for filename in os.listdir(directory):
+        
+        # Construct the wget command
+        command = f"python3 plot_atlas_fp.py stack 2 raw/{filename} --o=cleaned_and_stacked"
+        
+        # Execute the wget command for each line in the file
+        subprocess.run(command, shell=True)
+
+# %%
+os.getcwd()
+# %%
