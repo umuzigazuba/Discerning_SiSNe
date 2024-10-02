@@ -109,14 +109,17 @@ def ztf_flux_to_magnitude(flux, fluxerr, zero_point):
 # Load data saved in directory
 def ztf_load_data(ztf_name):
 
-    ztf_data = np.load(f"Data/ZTF_forced_photometry_data/processed/{ztf_name}.npy")
+    ztf_data = np.load(f"Data/ZTF_forced_photometry_data/processed/{ztf_name}_data.npy")
 
     time = ztf_data[:, 0]
     flux = ztf_data[:, 1]
     fluxerr = ztf_data[:, 2]
     filters = ztf_data[:, 3]
 
-    return np.array(time), np.array(flux), np.array(fluxerr), np.array(filters)
+    extremes = np.load(f"Data/ZTF_forced_photometry_data/processed/{ztf_name}_extremes.npy")
+
+    return np.array(time).astype(np.float32), np.array(flux).astype(np.float32), \
+           np.array(fluxerr).astype(np.float32), np.array(filters), np.array(extremes)
 
 # Plot data
 def ztf_plot_data(ztf_name, time, flux, fluxerr, filters, extremes, save_fig = False):
@@ -194,7 +197,11 @@ def atlas_load_data(atlas_name):
     fluxerr = atlas_data[:, 2]
     filters = atlas_data[:, 3]
 
-    return np.array(time), np.array(flux), np.array(fluxerr), np.array(filters)
+    extremes = np.load(f"Data/ATLAS_forced_photometry_data/processed/{atlas_name}_extremes.npy")
+
+    return np.array(time).astype(np.float32), np.array(flux).astype(np.float32), \
+           np.array(fluxerr).astype(np.float32), np.array(filters), np.array(extremes)
+
 
 # Plot data
 def atlas_plot_data(atlas_name, time, flux, fluxerr, filters, extremes, save_fig = False):
@@ -262,7 +269,7 @@ def find_baseline(time, flux, filter_f1, filter_f2):
 
         if num_to_cut > 0:
             past_and_future_epochs[f"Past Future f{filter_number + 1}"].extend(filter_idx[0][:(num_to_cut + 1)])
-            past_and_future_epochs["SN extremes"].extend([filter_idx[0][num_to_cut + 1]])
+            past_and_future_epochs["SN extremes"].extend([filter_idx[0][num_to_cut]])
 
         # There is no pre-supernova data
         else:
@@ -300,7 +307,7 @@ def find_baseline(time, flux, filter_f1, filter_f2):
 
         # There is no post-supernova data
         else:
-            past_and_future_epochs["SN extremes"].extend([filter_idx[0][len(flux_filter) - 1]])
+            past_and_future_epochs["SN extremes"].extend([filter_idx[0][len(flux_filter)]])
     
     return past_and_future_epochs
 
