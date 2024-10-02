@@ -111,10 +111,10 @@ def ztf_load_data(ztf_name):
 
     ztf_data = np.load(f"Data/ZTF_forced_photometry_data/processed/{ztf_name}.npy")
 
-    time = ztf_data[0]
-    flux = ztf_data[1]
-    fluxerr = ztf_data[2]
-    filters = ztf_data[3]
+    time = ztf_data[:, 0]
+    flux = ztf_data[:, 1]
+    fluxerr = ztf_data[:, 2]
+    filters = ztf_data[:, 3]
 
     return np.array(time), np.array(flux), np.array(fluxerr), np.array(filters)
 
@@ -189,10 +189,10 @@ def atlas_load_data(atlas_name):
 
     atlas_data = np.load(f"Data/ATLAS_forced_photometry_data/processed/{atlas_name}.npy")
 
-    time = atlas_data[0]
-    flux = atlas_data[1]
-    fluxerr = atlas_data[2]
-    filters = atlas_data[3]
+    time = atlas_data[:, 0]
+    flux = atlas_data[:, 1]
+    fluxerr = atlas_data[:, 2]
+    filters = atlas_data[:, 3]
 
     return np.array(time), np.array(flux), np.array(fluxerr), np.array(filters)
 
@@ -482,7 +482,7 @@ def atlas_data_processing(atlas_names, survey_information):
             # Save data
             SN_data = np.column_stack((time, flux, fluxerr, filters))
             np.save(f"Data/ATLAS_forced_photometry_data/processed/{internal_name}.npy", SN_data)
-            np.save(f"Data/ATLAS_forced_photometry_data/processed/{name}_extremes.npy", SN_extremes)
+            np.save(f"Data/ATLAS_forced_photometry_data/processed/{internal_name}_extremes.npy", SN_extremes)
 
             # Save name to file 
             if SN_type == "SN Ia-CSM":
@@ -552,7 +552,7 @@ if __name__ == '__main__':
     ztf_information = pd.read_csv("Data/ZTF_info.csv")
     ztf_names = ztf_information["Disc. Internal Name"][~pd.isnull(ztf_information["Disc. Internal Name"])].values
     
-    ztf_data_processing(ztf_names, ztf_information)
+    ztf_data_processing(ztf_names[200:], ztf_information)
 
     #ATLAS
     atlas_information = pd.read_csv("Data/ATLAS_info.csv")
@@ -562,4 +562,3 @@ if __name__ == '__main__':
     atlas_data_processing(atlas_names, atlas_information)
 
 # %%
-
