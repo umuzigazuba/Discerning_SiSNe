@@ -58,9 +58,9 @@ std_two_peaks = initial_std_two_peaks
 
 parameter_bounds_one_peak = ([-0.3, -100, -2, 0, 0, 0, -3, -1, -50, -1.5, -1.5, -2, -1.5, -1.5], [0.5, 30, 4, 3.5, 0.03, 4, -0.8, 1, 30, 1.5, 1.5, 1, 1.5, -1])
 
-parameter_bounds_gaussian = ([0, -300, 0, -0.5, -0.5, -1.5], [1.5, 300, 250, 1.5, 5.0, 5.0])
+parameter_bounds_gaussian = ([0, -300, 0, -0.5, -1.5, -1.5], [1.5, 300, 250, 1.5, 5.0, 5.0])
 
-parameter_bounds_two_peaks = ([-0.3, -100, -2, 0, 0, 0, -3, -1, -50, -1.5, -1.5, -2, -1.5, -1.5, 0, -300, 0, -0.5, -0.5, -1.5], [0.5, 30, 4, 3.5, 0.03, 4, -0.8, 1, 30, 1.5, 1.5, 1, 1.5, -1, 1.5, 300, 250, 1.5, 5.0, 5.0])
+parameter_bounds_two_peaks = ([-0.3, -100, -2, 0, 0, 0, -3, -1, -50, -1.5, -1.5, -2, -1.5, -1.5, 0, -300, 0, -0.5, -1.5, -1.5], [0.5, 30, 4, 3.5, 0.03, 4, -0.8, 1, 30, 1.5, 1.5, 1, 1.5, -1, 1.5, 300, 250, 1.5, 5.0, 5.0])
 
 def prior_one_peak(cube, ndim, nparams):
 
@@ -220,7 +220,7 @@ def prior_two_peaks(cube, ndim, nparams):
     cube[14] = truncnorm.ppf(cube[14], min, max, mean_two_peaks[14], std_two_peaks[14])
 
     # mu 1
-    min = (0.0 - mean_two_peaks[15]) / std_two_peaks[15]
+    min = (-300.0 - mean_two_peaks[15]) / std_two_peaks[15]
     max = (300.0 - mean_two_peaks[15]) / std_two_peaks[15]
     cube[15] = truncnorm.ppf(cube[15], min, max, mean_two_peaks[15], std_two_peaks[15])
 
@@ -230,18 +230,18 @@ def prior_two_peaks(cube, ndim, nparams):
     cube[16] = truncnorm.ppf(cube[16], min, max, mean_two_peaks[16], std_two_peaks[16])
 
     # amp 2
-    min = (0 - mean_two_peaks[17]) / std_two_peaks[17]
+    min = (-0.5 - mean_two_peaks[17]) / std_two_peaks[17]
     max = (1.5 - mean_two_peaks[17]) / std_two_peaks[17]
     cube[17] = truncnorm.ppf(cube[17], min, max, mean_two_peaks[17], std_two_peaks[17])
 
     # mu 2
-    min = (0 - mean_two_peaks[18]) / std_two_peaks[18]
-    max = (1.5 - mean_two_peaks[18]) / std_two_peaks[18]
+    min = (-0.5 - mean_two_peaks[18]) / std_two_peaks[18]
+    max = (5.0 - mean_two_peaks[18]) / std_two_peaks[18]
     cube[18] = truncnorm.ppf(cube[18], min, max, mean_two_peaks[18], std_two_peaks[18])
 
     # std_two_peaks 2
     min = (-1.5 - mean_two_peaks[19]) / std_two_peaks[19]
-    max = (2.0 - mean_two_peaks[19]) / std_two_peaks[19]
+    max = (5.0 - mean_two_peaks[19]) / std_two_peaks[19]
     cube[19] = truncnorm.ppf(cube[19], min, max, mean_two_peaks[19], std_two_peaks[19])
 
     return cube
@@ -432,20 +432,20 @@ def plot_extrema(time_aug, flux_aug, fluxerr_aug, f1_values_aug, f2_values_aug, 
     global time, flux, fluxerr, filters, f1_values, f2_values, f1, f2
 
     # the extrema
-    plt.scatter(time_aug[f1_values_aug][extrema_f1] + peak_time, flux_aug[f1_values_aug][extrema_f1], s = 250, marker = "*", c = "tab:green", edgecolors = "black", label = "Extrema r-band" , zorder = 10)
+    plt.scatter(time_aug[f1_values_aug][extrema_f1] + peak_time - sorted(time + peak_time)[1], flux_aug[f1_values_aug][extrema_f1], s = 250, marker = "*", c = "tab:green", edgecolors = "black", label = "Extrema r-band" , zorder = 10)
 
     # the original and augmented data
-    plt.fill_between(time_aug[f1_values_aug] + peak_time, flux_aug[f1_values_aug] - fluxerr_aug[f1_values_aug], flux_aug[f1_values_aug] + fluxerr_aug[f1_values_aug], color = "tab:blue", alpha = 0.1)
-    plt.errorbar(time[f1_values] + peak_time, flux[f1_values], yerr = fluxerr[f1_values], fmt = "o", markersize = 4, capsize = 2, alpha = 0.9, color = "tab:blue", label = "Band: r", zorder = 5)
-    plt.errorbar(time_aug[f1_values_aug] + peak_time, flux_aug[f1_values_aug], yerr = fluxerr_aug[f1_values_aug], fmt = "o", markersize = 4, capsize = 2, alpha = 0.1, color = "tab:blue", zorder = 5)
+    plt.fill_between(time_aug[f1_values_aug] + peak_time - sorted(time + peak_time)[1], flux_aug[f1_values_aug] - fluxerr_aug[f1_values_aug], flux_aug[f1_values_aug] + fluxerr_aug[f1_values_aug], color = "tab:blue", alpha = 0.1)
+    plt.errorbar(time[f1_values] + peak_time - sorted(time + peak_time)[1], flux[f1_values], yerr = fluxerr[f1_values], fmt = "o", markersize = 4, capsize = 2, alpha = 0.9, color = "tab:blue", label = "Band: r", zorder = 5)
+    plt.errorbar(time_aug[f1_values_aug] + peak_time - sorted(time + peak_time)[1], flux_aug[f1_values_aug], yerr = fluxerr_aug[f1_values_aug], fmt = "o", markersize = 4, capsize = 2, alpha = 0.1, color = "tab:blue", zorder = 5)
 
     # the extrema
-    plt.scatter(time_aug[f2_values_aug][extrema_f2] + peak_time, flux_aug[f2_values_aug][extrema_f2], s = 250, marker = "*", c = "tab:red", edgecolors = "black", label = "Extrema g-band", zorder = 10)
+    plt.scatter(time_aug[f2_values_aug][extrema_f2] + peak_time - sorted(time + peak_time)[1], flux_aug[f2_values_aug][extrema_f2], s = 250, marker = "*", c = "tab:red", edgecolors = "black", label = "Extrema g-band", zorder = 10)
 
     # the original and augmented data
-    plt.fill_between(time_aug[f2_values_aug] + peak_time, flux_aug[f2_values_aug] - fluxerr_aug[f2_values_aug], flux_aug[f2_values_aug] + fluxerr_aug[f2_values_aug], color = "tab:orange", alpha = 0.1)
-    plt.errorbar(time[f2_values] + peak_time, flux[f2_values], yerr = fluxerr[f2_values], fmt = "o", markersize = 4, capsize = 2, alpha = 0.9, color = "tab:orange", label = "Band: g", zorder = 5)
-    plt.errorbar(time_aug[f2_values_aug] + peak_time, flux_aug[f2_values_aug], yerr = fluxerr_aug[f2_values_aug], fmt = "o", markersize = 4, capsize = 2, alpha = 0.1, color = "tab:orange", zorder = 5)
+    plt.fill_between(time_aug[f2_values_aug] + peak_time - sorted(time + peak_time)[1], flux_aug[f2_values_aug] - fluxerr_aug[f2_values_aug], flux_aug[f2_values_aug] + fluxerr_aug[f2_values_aug], color = "tab:orange", alpha = 0.1)
+    plt.errorbar(time[f2_values] + peak_time - sorted(time + peak_time)[1], flux[f2_values], yerr = fluxerr[f2_values], fmt = "o", markersize = 4, capsize = 2, alpha = 0.9, color = "tab:orange", label = "Band: g", zorder = 5)
+    plt.errorbar(time_aug[f2_values_aug] + peak_time - sorted(time + peak_time)[1], flux_aug[f2_values_aug], yerr = fluxerr_aug[f2_values_aug], fmt = "o", markersize = 4, capsize = 2, alpha = 0.1, color = "tab:orange", zorder = 5)
 
     plt.xlabel("Modified Julian Date", fontsize = 13)
     plt.ylabel("Flux $(\mu Jy)$", fontsize = 13)
@@ -464,14 +464,14 @@ def plot_best_fit_light_curve(SN_id, red_chi_squared, time_fit, flux_fit, f1_val
     global time, flux, fluxerr, filters, f1_values, f2_values, f1, f2
 
     if f1 in filters:
-        plt.plot(time_fit[f1_values_fit] + peak_time, flux_fit[f1_values_fit], linestyle = "--", linewidth = 2, alpha = 0.9, color = "tab:blue", label = f"Best-fitted light curve {f1}-band")
-        plt.errorbar(time[f1_values] + peak_time, flux[f1_values], yerr = fluxerr[f1_values], fmt = "o", markersize = 4, capsize = 2, alpha = 0.3, color = "tab:blue", label = f"Band: {f1}", zorder = 5)
+        plt.plot(time_fit[f1_values_fit] + peak_time - sorted(time + peak_time)[1], flux_fit[f1_values_fit], linestyle = "--", linewidth = 2, alpha = 0.9, color = "tab:blue", label = f"Best-fitted light curve {f1}-band")
+        plt.errorbar(time[f1_values] + peak_time - sorted(time + peak_time)[1], flux[f1_values], yerr = fluxerr[f1_values], fmt = "o", markersize = 4, capsize = 2, alpha = 0.3, color = "tab:blue", label = f"Band: {f1}", zorder = 5)
 
     if f2 in filters:
-        plt.plot(time_fit[f2_values_fit] + peak_time, flux_fit[f2_values_fit], linestyle = "--", linewidth = 2, alpha = 0.9, color = "tab:orange", label = f"Best-fitted light curve {f2}-band")                
-        plt.errorbar(time[f2_values] + peak_time, flux[f2_values], yerr = fluxerr[f2_values], fmt = "o", markersize = 4, capsize = 2, alpha = 0.3, color = "tab:orange", label = f"Band: {f2}", zorder = 5)
+        plt.plot(time_fit[f2_values_fit] + peak_time - sorted(time + peak_time)[1], flux_fit[f2_values_fit], linestyle = "--", linewidth = 2, alpha = 0.9, color = "tab:orange", label = f"Best-fitted light curve {f2}-band")                
+        plt.errorbar(time[f2_values] + peak_time - sorted(time + peak_time)[1], flux[f2_values], yerr = fluxerr[f2_values], fmt = "o", markersize = 4, capsize = 2, alpha = 0.3, color = "tab:orange", label = f"Band: {f2}", zorder = 5)
 
-    plt.xlabel("Modified Julian Date", fontsize = 13)
+    plt.xlabel("Time since first detection [Days]", fontsize = 13)
     plt.ylabel("Flux $(\mu Jy)$", fontsize = 13)
     plt.title(f"Light curve of SN {SN_id}. " + r"$\mathrm{X}^{2}_{red}$" + f" = {red_chi_squared:.2f}.")
     plt.grid(alpha = 0.3)
@@ -590,51 +590,35 @@ def find_parameters_one_peak(SN_id, survey):
 
     global time, flux, fluxerr, f1_values, f2_values, mean_one_peak, std_one_peak
 
-    # Calculate the reduced chi squared value of the intial guess
-    red_chi_squared = reduced_chi_squared_one_peak(mean_one_peak) 
-
-    done = True
-    while done:
-
-        # Folder in which sampling results will be stored
-        os.makedirs(f"Data/Nested_sampling_parameters/{survey}/one_peak/{SN_id}/", exist_ok = True)
-        
-        # Run nested sampling to find the best parameters
-        pymultinest.run(loglikelihood_one_peak, prior_one_peak, n_parameters_one_peak, n_live_points = 50,
+    # Folder in which sampling results will be stored
+    os.makedirs(f"Data/Nested_sampling_parameters/{survey}/one_peak/{SN_id}/", exist_ok = True)
+    
+    # Run nested sampling to find the best parameters
+    pymultinest.run(loglikelihood_one_peak, prior_one_peak, n_parameters_one_peak, n_live_points = 50,
                     outputfiles_basename = f"Data/Nested_sampling_parameters/{survey}/one_peak/{SN_id}/",
                     resume = False, verbose = True)
-        
-        # Retrieve the best parameters and their errors
-        analyse = pymultinest.Analyzer(n_params = n_parameters_one_peak, outputfiles_basename = f"Data/Nested_sampling_parameters/{survey}/one_peak/{SN_id}/")
-        parameter_info = analyse.get_stats()
-        parameter_values = parameter_info["modes"][0]["mean"]
-        parameter_sigma = parameter_info["modes"][0]["sigma"]
-
-        # Calculate the reduced chi squared using the posterior
-        df = pd.read_csv(f"Data/Nested_sampling_parameters/{survey}/one_peak/{SN_id}/post_equal_weights.dat", delimiter = "\t")
-        posterior_samples = df.to_numpy()
-        posterior_red_chi_squared = []       
-
-        for idx in range(len(posterior_samples)):
-
-            string = posterior_samples[idx][0]
-            string_list = string.split()
-            float_list = [float(num) for num in string_list]
-
-            posterior_red_chi_squared.append(reduced_chi_squared_one_peak(float_list[:n_parameters_one_peak]))
-
-        new_red_chi_squared = np.median(posterior_red_chi_squared)
     
-        # Continue if the reduced chi squared has not converged yet
-        if np.abs(red_chi_squared - new_red_chi_squared) > 0.001: # and new_red_chi_squared > 0.95:
-            red_chi_squared = new_red_chi_squared
-            mean_one_peak = parameter_values
-            std_one_peak = parameter_sigma
+    # Retrieve the best parameters and their errors
+    analyse = pymultinest.Analyzer(n_params = n_parameters_one_peak, outputfiles_basename = f"Data/Nested_sampling_parameters/{survey}/one_peak/{SN_id}/")
+    parameter_info = analyse.get_stats()
+    parameter_values = parameter_info["modes"][0]["mean"]
 
-        else:
-            mean_one_peak = initial_mean_one_peak
-            std_one_peak = initial_std_one_peak
-            return np.array(parameter_values), np.array(parameter_sigma)
+    # Calculate the reduced chi squared using the posterior
+    df = pd.read_csv(f"Data/Nested_sampling_parameters/{survey}/one_peak/{SN_id}/post_equal_weights.dat", delimiter = "\t")
+    posterior_samples = df.to_numpy()
+    posterior_red_chi_squared = []       
+
+    for idx in range(len(posterior_samples)):
+
+        string = posterior_samples[idx][0]
+        string_list = string.split()
+        float_list = [float(num) for num in string_list]
+
+        posterior_red_chi_squared.append(reduced_chi_squared_one_peak(float_list[:n_parameters_one_peak]))
+
+    red_chi_squared = np.median(posterior_red_chi_squared)
+    
+    return np.array(parameter_values), red_chi_squared
         
 # %%
 
@@ -719,8 +703,8 @@ def plot_extrema_and_second_peak(SN_id, time_aug, flux_aug, fluxerr_aug, f1_valu
 
 ### Isolate peak ### 
 
-def isolate_second_peak(main_filter_second_peak, extrema_f1, peak_width_f1, extrema_f2, peak_width_f2, 
-                        time_aug, flux_aug, fluxerr_aug, filters_aug, f1_values_aug, f2_values_aug):
+def isolate_second_peak(main_filter_second_peak, extrema_f1, peak_width_f1, extrema_f2, 
+                        peak_width_f2, time_aug, f1_values_aug, f2_values_aug):
 
     global time, flux, fluxerr, filters, f1, f2
 
@@ -731,26 +715,10 @@ def isolate_second_peak(main_filter_second_peak, extrema_f1, peak_width_f1, extr
     elif main_filter_second_peak == f2:
         peak_data = np.where(np.abs(time - time_aug[f2_values_aug][extrema_f2][2]) < peak_width_f2)
 
-    # If the peak contains more data points than the number of fit parameters
-    # if len(peak_data[0]) > 6:
-
     time_peak = time[peak_data]
     flux_peak = flux[peak_data]
     fluxerr_peak = fluxerr[peak_data]
     filters_peak = filters[peak_data]
-
-    # If it contains less data points, use the augmented data
-    # else:
-        # if main_filter_second_peak == "r":
-        #     peak_data = np.where(np.abs(time_aug - time_aug[f1_values_aug][extrema_f1][2]) < peak_width_f1)
-
-        # elif main_filter_second_peak == "g":
-        #     peak_data = np.where(np.abs(time_aug - time_aug[f2_values_aug][extrema_f2][2]) < peak_width_f2)
-
-        # time_peak = time_aug[peak_data]
-        # flux_peak = flux_aug[peak_data]
-        # fluxerr_peak = fluxerr_aug[peak_data]
-        # filters_peak = filters_aug[peak_data]
 
     return time_peak, flux_peak, fluxerr_peak, filters_peak
 
@@ -826,51 +794,35 @@ def find_parameters_two_peaks(SN_id, survey):
 
     global time, flux, fluxerr, f1_values, f2_values, mean_two_peaks, std_two_peaks 
 
-    # Calculate the reduced chi squared value of the intial guess
-    red_chi_squared = reduced_chi_squared_two_peaks(mean_two_peaks) 
-
-    done = True
-    while done:
-
-        # Folder in which sampling results will be stored
-        os.makedirs(f"Data/Nested_sampling_parameters/{survey}/two_peaks/{SN_id}/", exist_ok = True)
-        
-        # Run nested sampling to find the best parameters
-        pymultinest.run(loglikelihood_two_peaks, prior_two_peaks, n_parameters_two_peaks, n_live_points = 50,
-                    outputfiles_basename = f"Data/Nested_sampling_parameters/{survey}/two_peaks/{SN_id}/",
-                    resume = False, verbose = True)
-        
-        # Retrieve the best parameters and their errors
-        analyse = pymultinest.Analyzer(n_params = n_parameters_two_peaks, outputfiles_basename = f"Data/Nested_sampling_parameters/{survey}/two_peaks/{SN_id}/")
-        parameter_info = analyse.get_stats()
-        parameter_values = parameter_info["modes"][0]["mean"]
-        parameter_sigma = parameter_info["modes"][0]["sigma"]
-
-        # Calculate the reduced chi squared using the posterior
-        df = pd.read_csv(f"Data/Nested_sampling_parameters/{survey}/two_peaks/{SN_id}/post_equal_weights.dat", delimiter = "\t")
-        posterior_samples = df.to_numpy()
-        posterior_red_chi_squared = []       
-
-        for idx in range(len(posterior_samples)):
-
-            string = posterior_samples[idx][0]
-            string_list = string.split()
-            float_list = [float(num) for num in string_list]
-
-            posterior_red_chi_squared.append(reduced_chi_squared_two_peaks(float_list[:n_parameters_two_peaks]))
-
-        new_red_chi_squared = np.median(posterior_red_chi_squared)
+    # Folder in which sampling results will be stored
+    os.makedirs(f"Data/Nested_sampling_parameters/{survey}/two_peaks/{SN_id}/", exist_ok = True)
     
-        # Continue if the reduced chi squared has not converged yet
-        if np.abs(red_chi_squared - new_red_chi_squared) > 0.001: # and new_red_chi_squared > 0.95:
-            red_chi_squared = new_red_chi_squared
-            mean_two_peaks = parameter_values
-            std_two_peaks = parameter_sigma
+    # Run nested sampling to find the best parameters
+    pymultinest.run(loglikelihood_two_peaks, prior_two_peaks, n_parameters_two_peaks, n_live_points = 50,
+                outputfiles_basename = f"Data/Nested_sampling_parameters/{survey}/two_peaks/{SN_id}/",
+                resume = False, verbose = True)
+    
+    # Retrieve the best parameters and their errors
+    analyse = pymultinest.Analyzer(n_params = n_parameters_two_peaks, outputfiles_basename = f"Data/Nested_sampling_parameters/{survey}/two_peaks/{SN_id}/")
+    parameter_info = analyse.get_stats()
+    parameter_values = parameter_info["modes"][0]["mean"]
 
-        else:
-            mean_two_peaks = initial_mean_two_peaks
-            std_two_peaks = initial_std_two_peaks
-            return np.array(parameter_values), np.array(parameter_sigma)
+    # Calculate the reduced chi squared using the posterior
+    df = pd.read_csv(f"Data/Nested_sampling_parameters/{survey}/two_peaks/{SN_id}/post_equal_weights.dat", delimiter = "\t")
+    posterior_samples = df.to_numpy()
+    posterior_red_chi_squared = []       
+
+    for idx in range(len(posterior_samples)):
+
+        string = posterior_samples[idx][0]
+        string_list = string.split()
+        float_list = [float(num) for num in string_list]
+
+        posterior_red_chi_squared.append(reduced_chi_squared_two_peaks(float_list[:n_parameters_two_peaks]))
+
+    red_chi_squared = np.median(posterior_red_chi_squared)
+
+    return np.array(parameter_values), red_chi_squared
 
 # %% 
 
@@ -935,183 +887,165 @@ def fit_light_curve(SN_id, survey):
     ###### Find extrema ######
     extrema_f1, peak_width_f1, extrema_f2, peak_width_f2 = find_extrema(time_aug, flux_aug, fluxerr_aug, f1_values_aug, f2_values_aug)
 
-    plot_extrema(time_aug, flux_aug, fluxerr_aug, f1_values_aug, f2_values_aug, peak_time, extrema_f1, extrema_f2)
-
     ########################################## LIGHT CURVE FITTING ####################################################
 
-    # # Data for plotting
-    # amount_fit = 200
+    # Data for plotting
+    amount_fit = 100
 
-    # time_fit = np.concatenate((np.linspace(time.min(), time.max(), amount_fit), np.linspace(time.min(), time.max(), amount_fit)))
-    # f1_values_fit = np.arange(amount_fit)
-    # f2_values_fit = np.arange(amount_fit) + amount_fit
+    time_fit = np.concatenate((np.linspace(time.min() - 30, time.max() + 30, amount_fit), np.linspace(time.min() - 30, time.max() + 30, amount_fit)))
+    f1_values_fit = np.arange(amount_fit)
+    f2_values_fit = np.arange(amount_fit) + amount_fit
 
-    # if extrema_f1[2] == -1 and extrema_f2[2] == -1:
-    #     # Only a one-peak light curve can be fit through the data
+    if extrema_f1[2] == -1 and extrema_f2[2] == -1:
+        # Only a one-peak light curve can be fit through the data
 
-    #     # Nested sampling
-    #     one_peak_parameters, one_peak_uncertainties = find_parameters_one_peak(survey, SN_id)
-    #     parameter_bounds = (one_peak_parameters - 3 * one_peak_uncertainties, one_peak_parameters + 3 * one_peak_uncertainties)
+        # Nested sampling
+        one_peak_parameters, red_chi_squared = find_parameters_one_peak(survey, SN_id)
 
-    #     # Levenberg-Marquardt algorithm 
-    #     try:
-    #         imporved_peak_parameters, _ = curve_fit(function_approximation_one_peak, time, flux, p0 = one_peak_parameters, sigma = fluxerr, 
-    #                                                 bounds = parameter_bounds, maxfev = 100000)
+        # Plot the results
+        np.save(f"Data/Analytical_parameters/{survey}/one_peak/{SN_id}_parameters_OP", one_peak_parameters)
+        red_chi_squared = reduced_chi_squared_one_peak(one_peak_parameters)
+
+        with open(f"Data/Analytical_parameters/{survey}/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
+            writer = csv.writer(file)
+            writer.writerow([SN_id, red_chi_squared])
         
-    #     except RuntimeError:
-    #         imporved_peak_parameters = one_peak_parameters
+        flux_fit = light_curve_one_peak(time_fit, one_peak_parameters, peak_flux, f1_values_fit, f2_values_fit)
+        plot_best_fit_light_curve(SN_id, red_chi_squared, time_fit, flux_fit, f1_values_fit, f2_values_fit, peak_time, f"{survey}/one_peak/Best_fit_{SN_id}_OP")
 
-    #     # Plot the results
-    #     np.save(f"Data/Analytical_parameters/{survey}/forced_photometry/one_peak/parameters_{SN_id}_OP", imporved_peak_parameters)
-    #     red_chi_squared = reduced_chi_squared_one_peak(imporved_peak_parameters)
+    else: 
+        # There is a possibility that there is a second peak
 
-    #     with open(f"Data/Analytical_parameters/{survey}/forced_photometry/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
-    #         writer = csv.writer(file)
-    #         writer.writerow([SN_id, red_chi_squared])
-        
-    #     flux_fit = light_curve_one_peak(time_fit, imporved_peak_parameters, peak_flux, f1_values_fit, f2_values_fit)
-    #     plot_best_fit_light_curve(SN_id, red_chi_squared, time_fit, flux_fit, f1_values_fit, f2_values_fit, peak_time, f"{survey}/forced_photometry/one_peak/light_curve_{SN_id}_OP")
-
-    # else: 
-    #     # Possible that there is a second peak
-
-    #     ### Fit a one-peak light curve
-    #     # Nested sampling
-    #     one_peak_parameters, one_peak_uncertainties = find_parameters_one_peak(survey, SN_id)
-    #     parameter_bounds = (one_peak_parameters - 3 * one_peak_uncertainties, one_peak_parameters + 3 * one_peak_uncertainties)
-
-    #     try:
-    #         # Nested sampling + Levenberg-Marquardt algorithm 
-    #         imporved_peak_parameters, _ = curve_fit(function_approximation_one_peak, time, flux, p0 = one_peak_parameters, sigma = fluxerr, 
-    #                                                 bounds = parameter_bounds, maxfev = 100000)
-        
-    #     except RuntimeError:
-    #         imporved_peak_parameters = one_peak_parameters
-        
-    #     red_chi_squared_OP = reduced_chi_squared_one_peak(imporved_peak_parameters)
+        ### Fit a one-peak light curve
+        # Nested sampling
+        one_peak_parameters, red_chi_squared_OP = find_parameters_one_peak(survey, SN_id)
                
-    #     ## Fit a two-peaks light curve
-    #     # Identify the main filter for the second peak ("r" if it exists and contains a peak)
-    #     if f1 in filters and extrema_f1[2] != -1:
-    #         main_filter_second_peak = f1
+        ## Fit a two-peaks light curve
+        # Identify the main filter for the second peak ("r" if it contains a peak)
+        if extrema_f1[2] != -1:
+            main_filter_second_peak = f1
 
-    #     elif f2 in filters and extrema_f2[2] != -1:
-    #         main_filter_second_peak = f2
+        elif extrema_f2[2] != -1:
+            main_filter_second_peak = f2
 
-    #     time_peak, flux_peak, fluxerr_peak, filters_peak = isolate_second_peak(main_filter_second_peak, extrema_f1, peak_width_f1, 
-    #                                                                            extrema_f2, peak_width_f2, time_aug, flux_aug, 
-    #                                                                            fluxerr_aug, filters_aug, f1_values_aug, f2_values_aug)
+        time_peak, flux_peak, fluxerr_peak, filters_peak = isolate_second_peak(main_filter_second_peak, extrema_f1, peak_width_f1, 
+                                                                               extrema_f2, peak_width_f2, time_aug, f1_values_aug, f2_values_aug)
 
-    #     if len(time_peak) < 6:
-    #          red_chi_squared_TP = np.inf
+        # There must be more fitting data than fitting parameters (= 6)
+        if len(time_peak) < 6:
+             red_chi_squared_TP = np.inf
 
-    #     else:
-    #         f1_values_peak = np.where(filters_peak == f1)
-    #         f2_values_peak = np.where(filters_peak == f2)
+        else:
+            f1_values_peak = np.where(filters_peak == f1)
+            f2_values_peak = np.where(filters_peak == f2)
 
-    #         # Inital guess of the parameters (amplitude, mean, standard deviation)
-    #         # If in both filters a second peak is detected
-    #         if f1 in filters and extrema_f1[2] != -1 and f2 in filters and extrema_f2[2] != -1:
-    #             guess_parameters = np.array([1, time_aug[f1_values_aug][extrema_f1][2], peak_width_f1, 
-    #                                         flux_aug[f2_values_aug][extrema_f2][2] / flux_aug[f1_values_aug][extrema_f1][2], 
-    #                                         time_aug[f2_values_aug][extrema_f2][2] / time_aug[f1_values_aug][extrema_f1][2], 
-    #                                         peak_width_f2 / peak_width_f1])
+            # Inital guess of the parameters (amplitude, mean, standard deviation)
+            # If in both filters a second peak is detected
+            if f1 in filters and extrema_f1[2] != -1 and f2 in filters and extrema_f2[2] != -1:
+                guess_parameters = np.array([1, time_aug[f1_values_aug][extrema_f1][2], peak_width_f1, 
+                                            flux_aug[f2_values_aug][extrema_f2][2] / flux_aug[f1_values_aug][extrema_f1][2], 
+                                            time_aug[f2_values_aug][extrema_f2][2] / time_aug[f1_values_aug][extrema_f1][2], 
+                                            peak_width_f2 / peak_width_f1])
             
-    #         # If only in one peak a second peak is detected
-    #         else:
-    #             if f1 in filters and extrema_f1[2] != -1:
-    #                 guess_parameters = np.array([1, time_aug[f1_values_aug][extrema_f1][2], peak_width_f1, 1, 1, 1])
+            # If only in one peak a second peak is detected
+            else:
+                if f1 in filters and extrema_f1[2] != -1:
+                    guess_parameters = np.array([1, time_aug[f1_values_aug][extrema_f1][2], peak_width_f1, 1, 1, 1])
 
-    #             elif f2 in filters and extrema_f2[2] != -1:
-    #                 guess_parameters = np.array([1, time_aug[f2_values_aug][extrema_f2][2], peak_width_f2, 1, 1, 1])
+                elif f2 in filters and extrema_f2[2] != -1:
+                    guess_parameters = np.array([1, time_aug[f2_values_aug][extrema_f2][2], peak_width_f2, 1, 1, 1])
 
-    #         down_bound = [0, -300, 0, -0.5, -1.5, -1.5]
-    #         up_bound = [1.5, 300, 250, 1.5, 5.0, 5.0]
+            down_bound = parameter_bounds_gaussian[0]
+            up_bound = parameter_bounds_gaussian[1]
 
-    #         if not ((down_bound < guess_parameters) & (guess_parameters < up_bound)).all():
-    #             # The one-peak light curve is a better fit
-    #             np.save(f"Data/Analytical_parameters/{survey}/forced_photometry/one_peak/parameters_{SN_id}_OP", imporved_peak_parameters)
+            if not ((down_bound < guess_parameters) & (guess_parameters < up_bound)).all():
+                # The one-peak light curve is a better fit
+                np.save(f"Data/Analytical_parameters/{survey}/one_peak/{SN_id}_parameters_OP", one_peak_parameters)
                 
-    #             with open(f"Data/Analytical_parameters/{survey}/forced_photometry/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
-    #                 writer = csv.writer(file)
-    #                 writer.writerow([SN_id, red_chi_squared_OP])
+                with open(f"Data/Analytical_parameters/{survey}/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
+                    writer = csv.writer(file)
+                    writer.writerow([SN_id, red_chi_squared_OP])
 
-    #             # Plot the results
-    #             flux_fit = light_curve_one_peak(time_fit, imporved_peak_parameters, peak_flux, f1_values_fit, f2_values_fit)
-    #             plot_best_fit_light_curve(SN_id, red_chi_squared_OP, time_fit, flux_fit, f1_values_fit, f2_values_fit, peak_time, f"{survey}/forced_photometry/one_peak/light_curve_{SN_id}_OP")
+                # Plot the results
+                flux_fit = light_curve_one_peak(time_fit, one_peak_parameters, peak_flux, f1_values_fit, f2_values_fit)
+                plot_best_fit_light_curve(SN_id, red_chi_squared_OP, time_fit, flux_fit, f1_values_fit, f2_values_fit, peak_time, f"{survey}/one_peak/Best_fit_{SN_id}_OP")
 
-    #             return 
+                return 
             
-    #         else:
+            else:
 
-    #             # Estimate the parameters of the second peak in both bands simultaneously
-    #             try:
-    #                 second_peak_parameters, _ = curve_fit(second_peak, time_peak, flux_peak, p0 = guess_parameters, sigma = fluxerr_peak, bounds = parameter_bounds_gaussian, maxfev = 100000)
+                # Estimate the parameters of the second peak in both bands simultaneously
+                try:
+                    second_peak_parameters, _ = curve_fit(second_peak, time_peak, flux_peak, p0 = guess_parameters, sigma = fluxerr_peak, bounds = parameter_bounds_gaussian)
                 
-    #             except RuntimeError:
-    #                 second_peak_parameters = guess_parameters
+                except RuntimeError:
+                    second_peak_parameters = guess_parameters
 
-    #             except ValueError:
-    #                 # The one-peak light curve is a better fit
-    #                 np.save(f"Data/Analytical_parameters/{survey}/forced_photometry/one_peak/parameters_{SN_id}_OP", imporved_peak_parameters)
+                except ValueError:
+                    # The one-peak light curve is a better fit
+                    np.save(f"Data/Analytical_parameters/{survey}/one_peak/{SN_id}_parameters_OP", one_peak_parameters)
 
-    #                 with open(f"Data/Analytical_parameters/{survey}/forced_photometry/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
-    #                     writer = csv.writer(file)
-    #                     writer.writerow([SN_id, red_chi_squared_OP])
+                    with open(f"Data/Analytical_parameters/{survey}/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
+                        writer = csv.writer(file)
+                        writer.writerow([SN_id, red_chi_squared_OP])
 
-    #                 # Plot the results
-    #                 flux_fit = light_curve_one_peak(time_fit, imporved_peak_parameters, peak_flux, f1_values_fit, f2_values_fit)
-    #                 plot_best_fit_light_curve(SN_id, red_chi_squared_OP, time_fit, flux_fit, f1_values_fit, f2_values_fit, peak_time, f"{survey}/forced_photometry/one_peak/light_curve_{SN_id}_OP")
+                    # Plot the results
+                    flux_fit = light_curve_one_peak(time_fit, one_peak_parameters, peak_flux, f1_values_fit, f2_values_fit)
+                    plot_best_fit_light_curve(SN_id, red_chi_squared_OP, time_fit, flux_fit, f1_values_fit, f2_values_fit, peak_time, f"{survey}/one_peak/Best_fit_{SN_id}_OP")
 
-    #                 return
+                    return
 
-    #             # Calculate the predicted flux of the second peak
-    #             flux_peak_fit = second_peak_fit(time, *second_peak_parameters)
+                # Calculate the predicted flux of the second peak
+                flux_peak_fit = second_peak_fit(time, *second_peak_parameters)
 
-    #             # Calculate the flux without the second peak
-    #             original_flux = np.copy(flux)
-    #             flux -= flux_peak_fit
+                # Calculate the flux without the second peak
+                original_flux = np.copy(flux)
+                flux -= flux_peak_fit
 
-    #             residual_parameters, _ = find_parameters_one_peak(survey, SN_id)
+                residual_parameters, _ = find_parameters_one_peak(survey, SN_id)
 
-    #             flux = original_flux
+                flux = original_flux
 
-    #             initial_guesses = list(residual_parameters) + list(second_peak_parameters)
+                initial_guesses = list(residual_parameters) + list(second_peak_parameters)
 
-    #             # Estimate the parameters of the full light curve in both bands simultaneously
-    #             try:
-    #                 two_peaks_parameters, _ = curve_fit(function_approximation_two_peaks, time, flux, p0 = initial_guesses, sigma = fluxerr, bounds = parameter_bounds_two_peaks, maxfev = 100000)
+                mean_two_peaks = initial_guesses
+
+                # Estimate the parameters of the full light curve in both bands simultaneously
+                # try:
+                #     two_peaks_parameters, _ = curve_fit(function_approximation_two_peaks, time, flux, p0 = initial_guesses, sigma = fluxerr, bounds = parameter_bounds_two_peaks)
                 
-    #             except RuntimeError:
-    #                 two_peaks_parameters = initial_guesses
+                # except RuntimeError:
+                #     two_peaks_parameters = initial_guesses
 
-    #             red_chi_squared_TP = reduced_chi_squared_two_peaks(two_peaks_parameters)
+                two_peaks_parameters, red_chi_squared_TP = find_parameters_two_peaks(SN_id, survey)
 
-    #             ### Based on best red chi squared value save one or two peak parameter and plot
+                # red_chi_squared_TP = reduced_chi_squared_two_peaks(two_peaks_parameters)
 
-    #     if np.abs(red_chi_squared_OP - 1) < np.abs(red_chi_squared_TP - 1):
-    #         # The one-peak light curve is a better fit
-    #         np.save(f"Data/Analytical_parameters/{survey}/forced_photometry/one_peak/parameters_{SN_id}_OP", imporved_peak_parameters)
+                ### Based on best red chi squared value save one or two peak parameter and plot
+
+        if np.abs(red_chi_squared_OP - 1) < np.abs(red_chi_squared_TP - 1):
+            # The one-peak light curve is a better fit
+            np.save(f"Data/Analytical_parameters/{survey}/one_peak/{SN_id}_parameters_OP", one_peak_parameters)
             
-    #         with open(f"Data/Analytical_parameters/{survey}/forced_photometry/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
-    #             writer = csv.writer(file)
-    #             writer.writerow([SN_id, red_chi_squared_OP])
+            with open(f"Data/Analytical_parameters/{survey}/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
+                writer = csv.writer(file)
+                writer.writerow([SN_id, red_chi_squared_OP])
 
-    #         # Plot the results
-    #         flux_fit_OP = light_curve_one_peak(time_fit, imporved_peak_parameters, peak_flux, f1_values_fit, f2_values_fit)
-    #         plot_best_fit_light_curve(SN_id, red_chi_squared_OP, time_fit, flux_fit_OP, f1_values_fit, f2_values_fit, peak_time, f"{survey}/forced_photometry/one_peak/light_curve_{SN_id}_OP")
+            # Plot the results
+            flux_fit_OP = light_curve_one_peak(time_fit, one_peak_parameters, peak_flux, f1_values_fit, f2_values_fit)
+            plot_best_fit_light_curve(SN_id, red_chi_squared_OP, time_fit, flux_fit_OP, f1_values_fit, f2_values_fit, peak_time, f"{survey}/one_peak/Best_fit_{SN_id}_OP")
 
-    #     else:
-    #         # The two-peaks light curve is a better fit
-    #         np.save(f"Data/Analytical_parameters/{survey}/forced_photometry/two_peaks/parameters_{SN_id}_TP", two_peaks_parameters) 
+        else:
+            # The two-peaks light curve is a better fit
+            np.save(f"Data/Analytical_parameters/{survey}/two_peaks/{SN_id}_parameters_TP", two_peaks_parameters) 
 
-    #         with open(f"Data/Analytical_parameters/{survey}/forced_photometry/two_peaks/red_chi_squared_TP.csv", "a", newline = "") as file:
-    #             writer = csv.writer(file)
-    #             writer.writerow([SN_id, red_chi_squared_TP])
+            with open(f"Data/Analytical_parameters/{survey}/two_peaks/red_chi_squared_TP.csv", "a", newline = "") as file:
+                writer = csv.writer(file)
+                writer.writerow([SN_id, red_chi_squared_TP])
 
-    #         # Plot the results
-    #         flux_fit_TP = light_curve_two_peaks(time_fit, two_peaks_parameters, peak_flux, f1_values_fit, f2_values_fit)
-    #         plot_best_fit_light_curve(SN_id, red_chi_squared_TP, time_fit, flux_fit_TP, f1_values_fit, f2_values_fit, peak_time, f"{survey}/forced_photometry/two_peaks/light_curve_{SN_id}_TP")
+            # Plot the results
+            flux_fit_TP = light_curve_two_peaks(time_fit, two_peaks_parameters, peak_flux, f1_values_fit, f2_values_fit)
+            plot_best_fit_light_curve(SN_id, red_chi_squared_TP, time_fit, flux_fit_TP, f1_values_fit, f2_values_fit, peak_time, f"{survey}/two_peaks/Best_fit_{SN_id}_TP")
 
 # %%
 
@@ -1119,7 +1053,7 @@ if __name__ == '__main__':
     
     survey = "ZTF"
 
-    for SN_id in ["ZTF18aaxjuwy", "ZTF23aansdlc", "ZTF23aamanim", "ZTF19aasekcx", "ZTF20aadxrvb"]:
+    for SN_id in ["ZTF23aansdlc"]:
 
         fit_light_curve(SN_id, survey)
 
