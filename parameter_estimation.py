@@ -51,16 +51,16 @@ mean_one_peak = initial_mean_one_peak
 std_one_peak = initial_std_one_peak
 
 initial_mean_two_peaks = initial_mean_one_peak + [0.63763033, 118.0002509, 51.6945267, 0.88386988, 0.96791228, 0.89671384]
-initial_std_two_peaks = initial_std_one_peak + [0.27643953, 92.80604182, 51.55866317, 0.20874114, 0.18211842, 0.38862772]
+initial_std_two_peaks = initial_std_one_peak + [0.5, 150, 75, 0.75, 0.37, 0.37]
 
 mean_two_peaks = initial_mean_two_peaks
 std_two_peaks = initial_std_two_peaks
 
 parameter_bounds_one_peak = ([-0.3, -100, -2, 0, 0, 0, -3, -1, -50, -1.5, -1.5, -2, -1.5, -1.5], [0.5, 30, 4, 3.5, 0.03, 4, -0.8, 1, 30, 1.5, 1.5, 1, 1.5, -1])
 
-parameter_bounds_gaussian = ([0, -300, 0, -0.5, -1.5, -1.5], [1.5, 300, 250, 1.5, 5.0, 5.0])
+parameter_bounds_gaussian = ([0, -300, 0, 0.5, 0.5, 0.5], [1, 300, 150, 1.5, 1.5, 1.5])
 
-parameter_bounds_two_peaks = ([-0.3, -100, -2, 0, 0, 0, -3, -1, -50, -1.5, -1.5, -2, -1.5, -1.5, 0, -300, 0, -0.5, -1.5, -1.5], [0.5, 30, 4, 3.5, 0.03, 4, -0.8, 1, 30, 1.5, 1.5, 1, 1.5, -1, 1.5, 300, 250, 1.5, 5.0, 5.0])
+parameter_bounds_two_peaks = ([-0.3, -100, -2, 0, 0, 0, -3, -1, -50, -1.5, -1.5, -2, -1.5, -1.5, 0, -300, 0, 0.5, 0.5, 0.5], [0.5, 30, 4, 3.5, 0.03, 4, -0.8, 1, 30, 1.5, 1.5, 1, 1.5, -1, 1, 300, 150, 1.5, 1.5, 1.5])
 
 def prior_one_peak(cube, ndim, nparams):
 
@@ -216,7 +216,7 @@ def prior_two_peaks(cube, ndim, nparams):
 
     # amp 1
     min = (0.0 - mean_two_peaks[14]) /std_two_peaks[14] 
-    max = (1.5 - mean_two_peaks[14]) / std_two_peaks[14]
+    max = (1.0 - mean_two_peaks[14]) / std_two_peaks[14]
     cube[14] = truncnorm.ppf(cube[14], min, max, mean_two_peaks[14], std_two_peaks[14])
 
     # mu 1
@@ -226,22 +226,22 @@ def prior_two_peaks(cube, ndim, nparams):
 
     # std_two_peaks 1
     min = (0.0 - mean_two_peaks[16]) / std_two_peaks[16]
-    max = (250.0 - mean_two_peaks[16]) / std_two_peaks[16]
+    max = (150.0 - mean_two_peaks[16]) / std_two_peaks[16]
     cube[16] = truncnorm.ppf(cube[16], min, max, mean_two_peaks[16], std_two_peaks[16])
 
     # amp 2
-    min = (-0.5 - mean_two_peaks[17]) / std_two_peaks[17]
+    min = (0.0 - mean_two_peaks[17]) / std_two_peaks[17]
     max = (1.5 - mean_two_peaks[17]) / std_two_peaks[17]
     cube[17] = truncnorm.ppf(cube[17], min, max, mean_two_peaks[17], std_two_peaks[17])
 
     # mu 2
-    min = (-0.5 - mean_two_peaks[18]) / std_two_peaks[18]
-    max = (5.0 - mean_two_peaks[18]) / std_two_peaks[18]
+    min = (-1.5 - mean_two_peaks[18]) / std_two_peaks[18]
+    max = (1.5 - mean_two_peaks[18]) / std_two_peaks[18]
     cube[18] = truncnorm.ppf(cube[18], min, max, mean_two_peaks[18], std_two_peaks[18])
 
     # std_two_peaks 2
     min = (-1.5 - mean_two_peaks[19]) / std_two_peaks[19]
-    max = (5.0 - mean_two_peaks[19]) / std_two_peaks[19]
+    max = (1.5 - mean_two_peaks[19]) / std_two_peaks[19]
     cube[19] = truncnorm.ppf(cube[19], min, max, mean_two_peaks[19], std_two_peaks[19])
 
     return cube
@@ -802,7 +802,7 @@ def find_parameters_two_peaks(SN_id, survey):
     # Run nested sampling to find the best parameters
     pymultinest.run(loglikelihood_two_peaks, prior_two_peaks, n_parameters_two_peaks, n_live_points = 50,
                 outputfiles_basename = f"Data/Nested_sampling_parameters/{survey}/two_peaks/{SN_id}/",
-                resume = False, verbose = True)
+                max_iter = 5000, resume = False, verbose = True)
     
     # Retrieve the best parameters and their errors
     analyse = pymultinest.Analyzer(n_params = n_parameters_two_peaks, outputfiles_basename = f"Data/Nested_sampling_parameters/{survey}/two_peaks/{SN_id}/")
@@ -960,7 +960,7 @@ def fit_light_curve(SN_id, survey):
             down_bound = parameter_bounds_gaussian[0]
             up_bound = parameter_bounds_gaussian[1]
 
-            if not ((down_bound < guess_parameters) & (guess_parameters < up_bound)).all():
+            if not ((down_bound <= guess_parameters) & (guess_parameters <= up_bound)).all():
                 # The one-peak light curve is a better fit
                 np.save(f"Data/Analytical_parameters/{survey}/one_peak/{SN_id}_parameters_OP", one_peak_parameters)
                 
@@ -1019,8 +1019,6 @@ def fit_light_curve(SN_id, survey):
                 except RuntimeError:
                     two_peaks_parameters = initial_guesses
 
-                # two_peaks_parameters, red_chi_squared_TP = find_parameters_two_peaks(SN_id, survey)
-
                 red_chi_squared_TP = reduced_chi_squared_two_peaks(two_peaks_parameters)
 
                 ### Based on best red chi squared value save one or two peak parameter and plot
@@ -1046,8 +1044,6 @@ def fit_light_curve(SN_id, survey):
                 writer.writerow([SN_id, red_chi_squared_TP])
 
             # Plot the results
-            flux_fit_TP = light_curve_two_peaks(time_fit, initial_guesses, peak_flux, f1_values_fit, f2_values_fit)
-            plot_best_fit_light_curve(SN_id, red_chi_squared_TP, time_fit, flux_fit_TP, f1_values_fit, f2_values_fit, peak_time, amount_fit, f"{survey}/two_peaks/Best_fit_{SN_id}_TP")
 
             flux_fit_TP = light_curve_two_peaks(time_fit, two_peaks_parameters, peak_flux, f1_values_fit, f2_values_fit)
             plot_best_fit_light_curve(SN_id, red_chi_squared_TP, time_fit, flux_fit_TP, f1_values_fit, f2_values_fit, peak_time, amount_fit, f"{survey}/two_peaks/Best_fit_{SN_id}_TP")
@@ -1057,12 +1053,11 @@ def fit_light_curve(SN_id, survey):
 if __name__ == '__main__':
     
     # survey = "ZTF"
-    # for SN_id in ztf_names_sn_IIn:
-
+    # for SN_id in ztf_names:
     #     fit_light_curve(SN_id, survey)
 
     survey = "ATLAS"
-    for SN_id in atlas_names_sn_IIn[90:]:
+    for SN_id in atlas_names:
 
         fit_light_curve(SN_id, survey)
 
