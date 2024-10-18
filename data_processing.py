@@ -89,7 +89,7 @@ def check_flux_uncertainties(fluxerr, reduced_chi_squared):
     return fluxerr
 
 # Conversion
-def ztf_flux_to_magnitude(flux, fluxerr, zero_point):
+def ztf_micro_flux_to_magnitude(flux, fluxerr, zero_point):
 
     mag = np.empty(len(flux))
     magerr = np.empty(len(flux))
@@ -116,26 +116,26 @@ def ztf_load_data(ztf_name):
     fluxerr = ztf_data[:, 2]
     filters = ztf_data[:, 3]
 
-    extremes = np.load(f"Data/ZTF_forced_photometry_data/processed/{ztf_name}_extremes.npy")
+    extremes = np.load(f"Data/ZTF_forced_photometry_data/processed/{ztf_name}_extrema.npy")
 
     return np.array(time).astype(np.float32), np.array(flux).astype(np.float32), \
            np.array(fluxerr).astype(np.float32), np.array(filters), np.array(extremes)
 
 # Plot data
-def ztf_plot_data(ztf_name, time, flux, fluxerr, filters, extremes, save_fig = False):
+def ztf_plot_data(ztf_name, time, flux, fluxerr, filters, extrema, save_fig = False):
 
-    if time[extremes[0]] < time[extremes[1]]:
-        time_first_detection = time[extremes[0]]
+    r_values = np.where(filters == "r")
+    g_values = np.where(filters == "g")
+
+    if time[r_values][extrema[0]] < time[g_values][extrema[2]]:
+        time_first_detection = time[r_values][extrema[0]]
         time -= time_first_detection
 
     else: 
-        time_first_detection = time[extremes[1]]
+        time_first_detection = time[g_values][extrema[2]]
         time -= time_first_detection
-
-    r_values = np.where(filters == "r")
+    
     plt.errorbar(time[r_values], flux[r_values], yerr = fluxerr[r_values], fmt = "o", markersize = 4, capsize = 2, color = "tab:blue", label = "Band: r")
-
-    g_values = np.where(filters == "g")
     plt.errorbar(time[g_values], flux[g_values], yerr = fluxerr[g_values], fmt = "o", markersize = 4, capsize = 2, color = "tab:orange", label = "Band: g")
 
     plt.xlabel("Days since first detection", fontsize = 13)
@@ -190,34 +190,34 @@ def atlas_micro_flux_to_magnitude(flux, fluxerr):
 # Load data saved in directory
 def atlas_load_data(atlas_name):
 
-    atlas_data = np.load(f"Data/ATLAS_forced_photometry_data/processed/{atlas_name}.npy")
+    atlas_data = np.load(f"Data/ATLAS_forced_photometry_data/processed/{atlas_name}_data.npy")
 
     time = atlas_data[:, 0]
     flux = atlas_data[:, 1]
     fluxerr = atlas_data[:, 2]
     filters = atlas_data[:, 3]
 
-    extremes = np.load(f"Data/ATLAS_forced_photometry_data/processed/{atlas_name}_extremes.npy")
+    extremes = np.load(f"Data/ATLAS_forced_photometry_data/processed/{atlas_name}_extrema.npy")
 
     return np.array(time).astype(np.float32), np.array(flux).astype(np.float32), \
            np.array(fluxerr).astype(np.float32), np.array(filters), np.array(extremes)
 
 
 # Plot data
-def atlas_plot_data(atlas_name, time, flux, fluxerr, filters, extremes, save_fig = False):
+def atlas_plot_data(atlas_name, time, flux, fluxerr, filters, extrema, save_fig = False):
     
-    if time[extremes[0]] < time[extremes[1]]:
-        time_first_detection = time[extremes[0]]
+    o_values = np.where(filters == "o")
+    c_values = np.where(filters == "c")
+
+    if time[o_values][extrema[0]] < time[c_values][extrema[2]]:
+        time_first_detection = time[o_values][extrema[0]]
         time -= time_first_detection
 
     else: 
-        time_first_detection = time[extremes[1]]
+        time_first_detection = time[c_values][extrema[2]]
         time -= time_first_detection
 
-    o_values = np.where(filters == "o")
     plt.errorbar(time[o_values], flux[o_values], yerr = fluxerr[o_values], fmt = "o", markersize = 4, capsize = 2, color = "tab:blue", label = "Band: o")
-
-    c_values = np.where(filters == "c")
     plt.errorbar(time[c_values], flux[c_values], yerr = fluxerr[c_values], fmt = "o", markersize = 4, capsize = 2, color = "tab:orange", label = "Band: c")
 
     plt.xlabel("Days since first detection", fontsize = 13)
@@ -239,89 +239,67 @@ def atlas_plot_data(atlas_name, time, flux, fluxerr, filters, extremes, save_fig
     # Has to be after cleaning because the peak needs to be determined
     # Often highest value has large error and is probably background noise
 
-def find_baseline(time, flux, filter_f1, filter_f2):
+def find_baseline(flux, filter_f1, filter_f2, window = 5):
 
-    past_and_future_epochs = {"Past Future f1":[], "Past Future f2":[], "SN extremes":[]}
+    past_and_future_epochs =  {"Extrema f1":[], "Extrema f2":[]}
 
-    # Past
     for filter_number, filter_idx in enumerate([filter_f1, filter_f2]):
-
-        time_filter, flux_filter = time[filter_idx], flux[filter_idx]
+        flux_filter = flux[filter_idx]
 
         peak_idx = np.argmax(flux_filter)
-        num_to_cut = 0
-        
-        # Check if there is pre-peak data 
-        if peak_idx == 0:
-            past_and_future_epochs["SN extremes"].extend([filter_idx[0][0]])
-            continue
+        beginning_SN = 0
 
-        # Slope at which the data is no longer constant
-        m_cutoff = 0.2 * np.abs((flux_filter[0] - flux_filter[peak_idx]) / (time_filter[0] - time_filter[peak_idx]))
+        first_section = flux_filter[:window]
+        first_mean = np.mean(first_section)
 
-        #Calculate the slope of all data before the peak
-        for cut_idx in range(1, peak_idx):
+        for idx in range(window, peak_idx, window):
 
-            m = np.abs((flux_filter[0] - flux_filter[cut_idx]) / (time_filter[0] - time_filter[cut_idx]))
+            next_section = flux_filter[idx:idx + window]
+            next_mean = np.mean(next_section)
 
-            if m < m_cutoff:
-                num_to_cut = cut_idx
+            if np.abs(next_mean - first_mean) > window:
+                beginning_SN = idx
+                break
 
-        if num_to_cut > 0:
-            past_and_future_epochs[f"Past Future f{filter_number + 1}"].extend(filter_idx[0][:(num_to_cut + 1)])
-            past_and_future_epochs["SN extremes"].extend([filter_idx[0][num_to_cut]])
-
-        # There is no pre-supernova data
-        else:
-            past_and_future_epochs["SN extremes"].extend([filter_idx[0][0]])
+        past_and_future_epochs[f"Extrema f{filter_number + 1}"].append(beginning_SN)
 
     # Future
     for filter_number, filter_idx in enumerate([filter_f1, filter_f2]):
 
-        time_filter, flux_filter = time[filter_idx], flux[filter_idx]
+        flux_filter = flux[filter_idx]
 
         peak_idx = np.argmax(flux_filter)
-        first_post_peak_idx = len(flux_filter) - np.argmax(flux_filter)
-        num_to_cut = 0
-        
-        # Check if there is post-peak data 
-        if peak_idx == len(flux_filter) - 1:
-            past_and_future_epochs["SN extremes"].extend([filter_idx[0][len(flux_filter) - 1]])
-            continue
+        end_SN = -1
 
-        # Slope at which the data is no longer constant
-        m_cutoff = 0.2 * np.abs((flux_filter[-1] - flux_filter[peak_idx]) / (time_filter[-1] - time_filter[peak_idx]))
+        last_section = flux_filter[-window:]
+        last_mean = np.mean(last_section)
 
-        #Calculate the slope of all data before the peak
-        for idx in range(2, first_post_peak_idx):
+        for idx in range(-window, - (len(flux_filter) - peak_idx), -window):
+
+            next_section = flux_filter[idx - window : idx]
+            next_mean = np.mean(next_section)
+
+            if np.abs(next_mean - last_mean) > window:
+                end_SN = idx
+                break
             
-            cut_idx = -1 * idx
-            m = np.abs((flux_filter[-1] - flux_filter[cut_idx]) / (time_filter[-1] - time_filter[cut_idx]))
+        past_and_future_epochs[f"Extrema f{filter_number + 1}"].append(end_SN)
 
-            if m < m_cutoff:
-                num_to_cut = idx
-
-        if num_to_cut > 0:
-            past_and_future_epochs[f"Past Future f{filter_number + 1}"].extend(filter_idx[0][-num_to_cut:])
-            past_and_future_epochs["SN extremes"].extend([filter_idx[0][-num_to_cut - 1]])
-
-        # There is no post-supernova data
-        else:
-            past_and_future_epochs["SN extremes"].extend([filter_idx[0][len(flux_filter)]])
-    
     return past_and_future_epochs
 
 def subtract_baseline(flux, filter_f1, filter_f2, past_and_future_epochs):
 
-    if len(past_and_future_epochs["Past Future f1"]) != 0:
+    if len(past_and_future_epochs["Extrema f1"]) != 0:
 
-        average_flux_baseline_f1 = np.mean(flux[past_and_future_epochs["Past Future f1"]])
+        baseline_f1 = np.concatenate((flux[filter_f1][:past_and_future_epochs["Extrema f1"][0]], flux[filter_f1][past_and_future_epochs["Extrema f1"][1]:]))
+        average_flux_baseline_f1 = np.mean(baseline_f1)
 
         flux[filter_f1] -= average_flux_baseline_f1
 
-    if len(past_and_future_epochs["Past Future f2"]) != 0:
+    if len(past_and_future_epochs["Extrema f2"]) != 0:
 
-        average_flux_baseline_f2 = np.mean(flux[past_and_future_epochs["Past Future f2"]])
+        baseline_f2 = np.concatenate((flux[filter_f2][:past_and_future_epochs["Extrema f2"][0]], flux[filter_f2][past_and_future_epochs["Extrema f2"][1]:]))
+        average_flux_baseline_f2 = np.mean(baseline_f2)
 
         flux[filter_f2] -= average_flux_baseline_f2
 
@@ -397,10 +375,8 @@ def ztf_data_processing(ztf_names, survey_information):
             filter_f2 = np.where(filters == f2)
 
             # Adjust the baseline to flux = 0
-            past_and_future = find_baseline(time, flux, filter_f1, filter_f2)
+            past_and_future = find_baseline(flux, filter_f1, filter_f2)
             flux = subtract_baseline(flux, filter_f1, filter_f2, past_and_future)
-
-            SN_extremes = np.array([past_and_future["SN extremes"]])[0]
 
             # Adjust estimates of flux uncertainties (if necessary)
             fluxerr = check_flux_uncertainties(fluxerr, reduced_chi_squared)
@@ -412,24 +388,47 @@ def ztf_data_processing(ztf_names, survey_information):
             # Apply time dilation
             time = time_dilation(time, redschift)
 
-            # Save data
-            SN_data = np.column_stack((time, flux, fluxerr, filters))
-            np.save(f"Data/ZTF_forced_photometry_data/processed/{name}_data.npy", SN_data)
-            np.save(f"Data/ZTF_forced_photometry_data/processed/{name}_extremes.npy", SN_extremes)
+            # Only consider confident detections
+            confident_detections = flux/fluxerr > 3
 
-            # Save name to file 
-            if SN_type == "SN Ia-CSM":
-                names_file = open("Data/ZTF_SNe_Ia_CSM.txt", "a")
-                names_file.write(name + "\n")
-                names_file.close()
-            
-            elif SN_type == "SN IIn":
-                names_file = open("Data/ZTF_SNe_IIn.txt", "a")
-                names_file.write(name + "\n")
-                names_file.close()
+            time = time[confident_detections]
+            flux = flux[confident_detections]
+            fluxerr = fluxerr[confident_detections]
+            filters = filters[confident_detections]
 
-            # Save plot 
-            ztf_plot_data(name, time, flux, fluxerr, filters, SN_extremes, save_fig = True)
+            filter_f1 = np.where(filters == f1)
+            filter_f2 = np.where(filters == f2)
+
+            if len(filter_f1[0]) != 0 and len(filter_f2[0]) != 0:
+                # Find extrema
+                SN_extrema = find_baseline(flux, filter_f1, filter_f2, 2)
+                SN_extrema = np.concatenate((SN_extrema["Extrema f1"], SN_extrema["Extrema f2"]))
+
+                new_filters = np.concatenate((filters[filter_f1][SN_extrema[0] : SN_extrema[1]], filters[filter_f2][SN_extrema[2] : SN_extrema[3]]))
+                new_filter_f1 = np.where(new_filters == f1)
+                new_filter_f2 = np.where(new_filters == f2)
+
+                # We only consider light curves with data in both filters 
+                if len(new_filter_f1[0]) >= 5 and len(new_filter_f2[0]) >= 5:
+
+                    # Save data
+                    SN_data = np.column_stack((time, flux, fluxerr, filters))
+                    np.save(f"Data/ZTF_forced_photometry_data/processed/{name}_data.npy", SN_data)
+                    np.save(f"Data/ZTF_forced_photometry_data/processed/{name}_extrema.npy", SN_extrema)
+
+                    # Save name to file 
+                    if SN_type == "SN Ia-CSM":
+                        names_file = open("Data/ZTF_SNe_Ia_CSM.txt", "a")
+                        names_file.write(name + "\n")
+                        names_file.close()
+                    
+                    elif SN_type == "SN IIn":
+                        names_file = open("Data/ZTF_SNe_IIn.txt", "a")
+                        names_file.write(name + "\n")
+                        names_file.close()
+
+                    # Save plot 
+                    ztf_plot_data(name, time, flux, fluxerr, filters, SN_extrema, save_fig = True)
 
 def atlas_data_processing(atlas_names, survey_information):
 
@@ -474,10 +473,8 @@ def atlas_data_processing(atlas_names, survey_information):
             filter_f2 = np.where(filters == f2)
 
             # Adjust the baseline to flux = 0
-            past_and_future = find_baseline(time, flux, filter_f1, filter_f2)
+            past_and_future = find_baseline(flux, filter_f1, filter_f2)
             flux = subtract_baseline(flux, filter_f1, filter_f2, past_and_future)
-
-            SN_extremes = np.array([past_and_future["SN extremes"]])[0]
 
             # Apply Milky Way extraction
             flux[filter_f1] = milky_way_extinction(ra, dec, flux[filter_f1], f1_wavelength)
@@ -486,25 +483,48 @@ def atlas_data_processing(atlas_names, survey_information):
             # Apply time dilation
             time = time_dilation(time, redshift)
 
-            # Save data
-            SN_data = np.column_stack((time, flux, fluxerr, filters))
-            np.save(f"Data/ATLAS_forced_photometry_data/processed/{internal_name}.npy", SN_data)
-            np.save(f"Data/ATLAS_forced_photometry_data/processed/{internal_name}_extremes.npy", SN_extremes)
+            # Only consider confident detections
+            confident_detections = flux/fluxerr > 3
 
-            # Save name to file 
-            if SN_type == "SN Ia-CSM":
-                names_file = open("Data/ATLAS_SNe_Ia_CSM.txt", "a")
-                names_file.write(internal_name + "\n")
-                names_file.close()
+            time = time[confident_detections]
+            flux = flux[confident_detections]
+            fluxerr = fluxerr[confident_detections]
+            filters = filters[confident_detections]
+
+            filter_f1 = np.where(filters == f1)
+            filter_f2 = np.where(filters == f2)
+
+            if len(filter_f1[0]) != 0 and len(filter_f2[0]) != 0:
+                # Find extrema
+                SN_extrema = find_baseline(flux, filter_f1, filter_f2, 2)
+                SN_extrema = np.concatenate((SN_extrema["Extrema f1"], SN_extrema["Extrema f2"]))
+
+                new_filters = np.concatenate((filters[filter_f1][SN_extrema[0] : SN_extrema[1]], filters[filter_f2][SN_extrema[2] : SN_extrema[3]]))
+                new_filter_f1 = np.where(new_filters == f1)
+                new_filter_f2 = np.where(new_filters == f2)
+
+                # We only consider light curves with data in both filters 
+                if len(new_filter_f1[0]) >= 5 and len(new_filter_f2[0]) >= 5:
+
+                    # Save data
+                    SN_data = np.column_stack((time, flux, fluxerr, filters))
+                    np.save(f"Data/ATLAS_forced_photometry_data/processed/{internal_name}_data.npy", SN_data)
+                    np.save(f"Data/ATLAS_forced_photometry_data/processed/{internal_name}_extrema.npy", SN_extrema)
+
+                    # Save name to file 
+                    if SN_type == "SN Ia-CSM":
+                        names_file = open("Data/ATLAS_SNe_Ia_CSM.txt", "a")
+                        names_file.write(internal_name + "\n")
+                        names_file.close()
+                    
+                    elif SN_type == "SN IIn":
+                        names_file = open("Data/ATLAS_SNe_IIn.txt", "a")
+                        names_file.write(internal_name + "\n")
+                        names_file.close()
+
+                    # Save plot 
+                    atlas_plot_data(internal_name, time, flux, fluxerr, filters, SN_extrema, save_fig = True)
             
-            elif SN_type == "SN IIn":
-                names_file = open("Data/ATLAS_SNe_IIn.txt", "a")
-                names_file.write(internal_name + "\n")
-                names_file.close()
-
-            # Save plot 
-            atlas_plot_data(internal_name, time, flux, fluxerr, filters, SN_extremes, save_fig = True)
-       
 # %%
 
 ### Light curve approximation ###
@@ -559,7 +579,7 @@ if __name__ == '__main__':
     ztf_information = pd.read_csv("Data/ZTF_info.csv")
     ztf_names = ztf_information["Disc. Internal Name"][~pd.isnull(ztf_information["Disc. Internal Name"])].values
     
-    ztf_data_processing(ztf_names[200:], ztf_information)
+    ztf_data_processing(ztf_names, ztf_information)
 
     #ATLAS
     atlas_information = pd.read_csv("Data/ATLAS_info.csv")

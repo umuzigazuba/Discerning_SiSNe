@@ -58,9 +58,9 @@ std_two_peaks = initial_std_two_peaks
 
 parameter_bounds_one_peak = ([-0.3, -100, -2, 0, 0, 0, -3, -1, -50, -1.5, -1.5, -2, -1.5, -1.5], [0.5, 30, 4, 3.5, 0.03, 4, -0.8, 1, 30, 1.5, 1.5, 1, 1.5, -1])
 
-parameter_bounds_gaussian = ([0, -300, 0, 0.5, 0.5, 0.5], [1, 300, 150, 1.5, 1.5, 1.5])
+parameter_bounds_gaussian = ([0, -300, 0, 0.5, 0.5, 0.5], [1, 300, 150, 2.0, 2.0, 2.0])
 
-parameter_bounds_two_peaks = ([-0.3, -100, -2, 0, 0, 0, -3, -1, -50, -1.5, -1.5, -2, -1.5, -1.5, 0, -300, 0, 0.5, 0.5, 0.5], [0.5, 30, 4, 3.5, 0.03, 4, -0.8, 1, 30, 1.5, 1.5, 1, 1.5, -1, 1, 300, 150, 1.5, 1.5, 1.5])
+parameter_bounds_two_peaks = ([-0.3, -100, -2, 0, 0, 0, -3, -1, -50, -1.5, -1.5, -2, -1.5, -1.5, 0, -300, 0, 0.5, 0.5, 0.5], [0.5, 30, 4, 3.5, 0.03, 4, -0.8, 1, 30, 1.5, 1.5, 1, 1.5, -1, 1, 300, 150, 2.0, 2.0, 2.0])
 
 def prior_one_peak(cube, ndim, nparams):
 
@@ -469,10 +469,6 @@ def plot_best_fit_light_curve(SN_id, red_chi_squared, time_fit, flux_fit, f1_val
     plt.plot(time_fit[f2_values_fit] + peak_time - sorted(time + peak_time)[1], flux_fit[f2_values_fit], linestyle = "--", linewidth = 2, color = "tab:orange", label = f"Best-fitted light curve {f2}-band")                
     plt.errorbar(time[f2_values] + peak_time - sorted(time + peak_time)[1], flux[f2_values], yerr = fluxerr[f2_values], fmt = "o", markersize = 4, capsize = 2, color = "tab:orange", label = f"Band: {f2}", zorder = 5)
 
-    # Plot posterior samples
-    df = pd.read_csv(f"Data/Nested_sampling_parameters/{survey}/one_peak/{SN_id}/post_equal_weights.dat", delimiter = "\t")
-    posterior_samples = df.to_numpy()  
-
     plt.xlabel("Time since first detection [Days]", fontsize = 13)
     plt.ylabel("Flux $(\mu Jy)$", fontsize = 13)
     plt.title(f"Light curve of SN {SN_id}. " + r"$\mathrm{X}^{2}_{red}$" + f" = {red_chi_squared:.2f}.")
@@ -854,18 +850,13 @@ def fit_light_curve(SN_id, survey):
         time, flux, fluxerr, filters, boundaries = atlas_load_data(SN_id)
 
     # Only consider data belonging to the supernova explosion
-    time = np.concatenate((time[boundaries[0] : boundaries[2] + 1], time[boundaries[1] : boundaries[3] + 1]))
-    flux = np.concatenate((flux[boundaries[0] : boundaries[2] + 1], flux[boundaries[1] : boundaries[3] + 1]))
-    fluxerr = np.concatenate((fluxerr[boundaries[0] : boundaries[2] + 1], fluxerr[boundaries[1] : boundaries[3] + 1]))
-    filters = np.concatenate((filters[boundaries[0] : boundaries[2] + 1], filters[boundaries[1] : boundaries[3] + 1]))
+    f1_values = np.where(filters == f1)
+    f2_values = np.where(filters == f2)
 
-    # # Only consider confident detections
-    # confident_detections = flux/fluxerr > 3
-
-    # time = time[confident_detections]
-    # flux = flux[confident_detections]
-    # fluxerr = fluxerr[confident_detections]
-    # filters = filters[confident_detections]
+    time = np.concatenate((time[f1_values][boundaries[0] : boundaries[1]], time[f2_values][boundaries[2] : boundaries[3]]))
+    flux = np.concatenate((flux[f1_values][boundaries[0] : boundaries[1]], flux[f2_values][boundaries[2] : boundaries[3]]))
+    fluxerr = np.concatenate((fluxerr[f1_values][boundaries[0] : boundaries[1]], fluxerr[f2_values][boundaries[2] : boundaries[3]]))
+    filters = np.concatenate((filters[f1_values][boundaries[0] : boundaries[1]], filters[f2_values][boundaries[2] : boundaries[3]]))
 
     f1_values = np.where(filters == f1)
     f2_values = np.where(filters == f2)
@@ -1052,12 +1043,12 @@ def fit_light_curve(SN_id, survey):
 
 if __name__ == '__main__':
     
-    # survey = "ZTF"
-    # for SN_id in ztf_names:
-    #     fit_light_curve(SN_id, survey)
+    survey = "ZTF"
+    for SN_id in ztf_names_sn_IIn:
+        fit_light_curve(SN_id, survey)
 
     survey = "ATLAS"
-    for SN_id in atlas_names:
+    for SN_id in atlas_names_sn_IIn:
 
         fit_light_curve(SN_id, survey)
 

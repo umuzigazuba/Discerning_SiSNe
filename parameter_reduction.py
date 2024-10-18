@@ -1,6 +1,6 @@
 # %%
 
-from data_processing import load_ztf_data, load_atlas_data, ztf_micro_flux_to_magnitude
+from data_processing import ztf_load_data, atlas_load_data, atlas_micro_flux_to_magnitude
 from parameter_estimation import light_curve_one_peak, light_curve_two_peaks
 
 import matplotlib.pyplot as plt
@@ -10,32 +10,6 @@ import seaborn as sn
 import pandas as pd
 import os
 import csv
-
-# %% 
-
-def delete_single_filter_SN(SN_names, survey):
-
-    to_delete = np.array([])
-
-    if survey == "ZTF":
-        for id, SN_id in enumerate(SN_names):
-
-            _, _, _, filters = load_ztf_data(SN_id)
-
-            if "g" not in filters or "r" not in filters:
-                to_delete = np.append(to_delete, id)
-
-    if survey == "ATLAS":
-        for id, SN_id in enumerate(SN_names):
-
-            _, _, _, filters = load_atlas_data(SN_id)
-
-            if "o" not in filters or "c" not in filters:
-                to_delete = np.append(to_delete, id)
-
-    SN_names = np.delete(SN_names, to_delete.astype(int))
-
-    return SN_names
 
 # %%
 
@@ -48,12 +22,12 @@ def retrieve_parameters(SN_names, survey):
 
     for SN_id in SN_names:
 
-        if os.path.isfile(f"Data/Analytical_parameters/{survey}/one_peak/parameters_{SN_id}_OP.npy"):
-            data = np.load(f"Data/Analytical_parameters/{survey}/one_peak/parameters_{SN_id}_OP.npy")
+        if os.path.isfile(f"Data/Analytical_parameters/{survey}/one_peak/{SN_id}_parameters_OP.npy"):
+            data = np.load(f"Data/Analytical_parameters/{survey}/one_peak/{SN_id}_parameters_OP.npy")
             parameters_OP.append([SN_id, *data])
 
         else:
-            data = np.load(f"Data/Analytical_parameters/{survey}/two_peaks/parameters_{SN_id}_TP.npy")
+            data = np.load(f"Data/Analytical_parameters/{survey}/two_peaks/{SN_id}_parameters_TP.npy")
             parameters_TP.append([SN_id, *data])
 
     parameters_OP = np.array(parameters_OP, dtype = object)
@@ -103,14 +77,14 @@ def transform_data(SN_id, survey, parameter_values):
         f2 = "g"
 
         # Load the data
-        time, flux, fluxerr, filters = load_ztf_data(SN_id)
+        time, flux, fluxerr, filters = ztf_load_data(SN_id)
 
     elif survey == "ATLAS":
         f1 = "o"
         f2 = "c"
 
         # Load the data
-        time, flux, fluxerr, filters = load_atlas_data(SN_id)
+        time, flux, fluxerr, filters = atlas_load_data(SN_id)
 
     f1_values = np.where(filters == f1)
     f2_values = np.where(filters == f2)
@@ -151,6 +125,7 @@ def plot_red_chi_squared(red_chi_squared_Ia, red_chi_squared_II, percentile_95, 
     plt.title(r"$\mathrm{X}^{2}_{red}$" + f" distribution of {survey} SNe.")
     plt.grid(alpha = 0.3)
     plt.legend()
+    plt.savefig(f"Presentation/red_chi_squared_{survey}.png", dpi = 300, bbox_inches = "tight")
     plt.show()
 
 # %%
@@ -241,17 +216,24 @@ def calculate_global_parameters(SN_id, survey, peak_number, parameter_values):
         f1 = "r"
         f2 = "g"
 
-        time, flux, fluxerr, filters = load_ztf_data(SN_id)
+        time, flux, _, filters, boundaries = ztf_load_data(SN_id)
 
-    if survey == "ATLAS" or survey == "ATLAS/forced_photometry":
+    if survey == "ATLAS":
         f1 = "o"
         f2 = "c"
 
         # Load the data
-        time, flux, fluxerr, filters = load_atlas_data(SN_id)
+        time, flux, _, filters, boundaries = atlas_load_data(SN_id)
+
+    filter_f1 = np.where(filters == f1) 
+    filter_f2 = np.where(filters == f2)
+
+    # Only consider data belonging to the supernova explosion
+    time = np.concatenate((time[filter_f1][boundaries[0] : boundaries[1]], time[filter_f2][boundaries[2] : boundaries[3]]))
+    flux = np.concatenate((flux[filter_f1][boundaries[0] : boundaries[1]], flux[filter_f2][boundaries[2] : boundaries[3]]))
+    filters = np.concatenate((filters[filter_f1][boundaries[0] : boundaries[1]], filters[filter_f2][boundaries[2] : boundaries[3]]))
 
     f1_values = np.where(filters == f1)
-    f2_values = np.where(filters == f2)
 
     # Shift the light curve so that the main peak is at time = 0 MJD
     peak_main_idx = np.argmax(flux[f1_values])
@@ -261,7 +243,7 @@ def calculate_global_parameters(SN_id, survey, peak_number, parameter_values):
     time -= peak_time
 
     amount_fit = 1000
-    time_fit = np.concatenate((np.linspace(-150, 500, amount_fit), np.linspace(-150, 500, amount_fit)))
+    time_fit = np.concatenate((np.linspace(-500, 500, amount_fit), np.linspace(-500, 500, amount_fit)))
     f1_values_fit = np.arange(amount_fit)
     f2_values_fit = np.arange(amount_fit) + amount_fit
 
@@ -271,7 +253,7 @@ def calculate_global_parameters(SN_id, survey, peak_number, parameter_values):
     elif peak_number == 2:
         flux_fit = light_curve_two_peaks(time_fit, parameter_values, peak_flux, f1_values_fit, f2_values_fit)
 
-    magnitude_fit = ztf_micro_flux_to_magnitude(flux_fit)
+    magnitude_fit, _ = atlas_micro_flux_to_magnitude(flux_fit, flux_fit)
 
     time_fit += peak_time
 
@@ -360,21 +342,15 @@ def calculate_global_parameters(SN_id, survey, peak_number, parameter_values):
 
 def retrieve_redshift(SN_names, survey):
 
+    survey_information = pd.read_csv(f"Data/{survey}_info.csv")
     redshifts = []
-    file_Ia = pd.read_csv(f"Data/{survey}_Ia.csv").to_numpy()
-    file_II = pd.read_csv(f"Data/{survey}_II.csv").to_numpy()
-    
-    for SN_id in SN_names:
-    
-        if SN_id in file_Ia[:, 0]:
-            idx = np.where(file_Ia[:, 0] == SN_id)
-            z = file_Ia[idx, 1]
-            redshifts.append(float(z))
 
-        elif SN_id in file_II[:, 0]:
-            idx = np.where(file_II[:, 0] == SN_id)
-            z = file_II[idx, 1]
-            redshifts.append(float(z))
+    for name in SN_names:
+        
+        SN_idx = np.where(survey_information["Disc. Internal Name"] == name)
+        
+        z = survey_information["Redshift"].values[SN_idx][0]
+        redshifts.append(float(z))
 
     return redshifts
 
@@ -409,35 +385,51 @@ def calculate_peak_absolute_magnitude(apparent_magnitude, redshift):
 
 # %%
 
-def determine_parameters(survey):
+# %%
+
+if __name__ == '__main__':
+    
+    survey = "ZTF"
 
     if survey == "ZTF":
-        f1 = "g"
-        f2 = "r"
+        f1 = "r"
+        f2 = "g"
+
+    elif survey == "ATLAS":
+        f1 = "o"
+        f2 = 'c'
 
     # Load the SN names
-    SN_names_Ia = np.loadtxt(f"Data/{survey}_ID_SNe_Ia_CSM", delimiter = ",", dtype = "str")
-    SN_names_II = np.loadtxt(f"Data/{survey}_ID_SNe_IIn", delimiter = ",", dtype = "str")
+    SN_names_Ia = np.loadtxt(f"Data/{survey}_SNe_Ia_CSM.txt", delimiter = ",", dtype = "str")
+    SN_names_II = np.loadtxt(f"Data/{survey}_SNe_IIn.txt", delimiter = ",", dtype = "str")
 
-    # Delete the names of SNe that has data in only one filter
-    SN_names_Ia = delete_single_filter_SN(SN_names_Ia, survey)
-    SN_names_II = delete_single_filter_SN(SN_names_II, survey)
+    # %%
 
     # Retrieve the reduced chi squared values
     red_chi_squared_values_OP_Ia, red_chi_squared_values_OP_II = retrieve_red_chi_squared(f"Data/Analytical_parameters/{survey}/one_peak/red_chi_squared_OP.csv", SN_names_Ia, SN_names_II)
     red_chi_squared_values_TP_Ia, red_chi_squared_values_TP_II = retrieve_red_chi_squared(f"Data/Analytical_parameters/{survey}/two_peaks/red_chi_squared_TP.csv", SN_names_Ia, SN_names_II)
 
-    red_chi_squared_values_Ia = np.concatenate((red_chi_squared_values_OP_Ia, red_chi_squared_values_TP_Ia))
-    red_chi_squared_values_II = np.concatenate((red_chi_squared_values_OP_II, red_chi_squared_values_TP_II))
-
+    if len(red_chi_squared_values_TP_Ia) != 0:
+        red_chi_squared_values_Ia = np.concatenate((red_chi_squared_values_OP_Ia, red_chi_squared_values_TP_Ia), axis = 0)
+    else:
+        red_chi_squared_values_Ia = red_chi_squared_values_OP_Ia
+    red_chi_squared_values_II = np.concatenate((red_chi_squared_values_OP_II, red_chi_squared_values_TP_II), axis = 0)
     red_chi_squared_values = np.concatenate((red_chi_squared_values_Ia, red_chi_squared_values_II))
+    
     percentile_95 = np.percentile(red_chi_squared_values[:, 1], 95)
+    print(percentile_95)
 
     # Remove light curves with reduced chi squared larger than the 95th percentile
     cut_light_curves = np.where(red_chi_squared_values[:, 1] > percentile_95)
 
+    print(len(cut_light_curves[0]))
+    print(len(red_chi_squared_values) - len(cut_light_curves[0]))
+
     cut_light_curves_Ia = np.where(np.isin(SN_names_Ia, red_chi_squared_values[cut_light_curves, 0][0]))[0]
     cut_light_curves_II = np.where(np.isin(SN_names_II, red_chi_squared_values[cut_light_curves, 0][0]))[0]
+
+    print(len(cut_light_curves_Ia))
+    print(len(cut_light_curves_II))
 
     SN_names_Ia = np.delete(SN_names_Ia, cut_light_curves_Ia)
     SN_names_II = np.delete(SN_names_II, cut_light_curves_II)
@@ -445,51 +437,75 @@ def determine_parameters(survey):
     SN_labels = np.array(["SN Ia CSM"] * len(SN_names_Ia) + ["SN IIn"] * len(SN_names_II))
     SN_labels_color = np.array([0] * len(SN_names_Ia) + [1] * len(SN_names_II))
 
-    # Retrieve the parameters
-    parameters_OP_Ia, parameters_TP_Ia = retrieve_parameters(SN_names_Ia, survey)
-    parameters_OP_II, parameters_TP_II = retrieve_parameters(SN_names_II, survey)
-
-    parameters_Ia = np.concatenate((np.concatenate((parameters_OP_Ia, np.zeros((len(parameters_OP_Ia), 6))), axis = 1), parameters_TP_Ia))
-    parameters_II = np.concatenate((np.concatenate((parameters_OP_II, np.zeros((len(parameters_OP_II), 6))), axis = 1), parameters_TP_II))
-    fitting_parameters = np.concatenate((parameters_Ia, parameters_II))
-    number_of_peaks = np.concatenate((np.concatenate(([1] * len(parameters_OP_Ia), [2] * len(parameters_TP_Ia))), \
-                                    np.concatenate(([1] * len(parameters_OP_II), [2] * len(parameters_TP_II)))))
-    
-    global_parameters = []
-
-    for idx in range(len(fitting_parameters)):
-        
-        parameter_values = calculate_global_parameters(fitting_parameters[idx, 0], survey, number_of_peaks[idx], fitting_parameters[idx, 1:])
-        global_parameters.append(parameter_values)
-
-    return fitting_parameters, np.array(global_parameters), number_of_peaks, SN_labels, SN_labels_color
-
-# %%
-
-if __name__ == '__main__':
-
     # plot_red_chi_squared(red_chi_squared_values_Ia[:, 1], red_chi_squared_values_II[:, 1], percentile_95, survey)
 
-    parameters = ["$\mathrm{A}$", "$\mathrm{t_{0}}$", "$\mathrm{t_{rise}}$", "$\mathrm{\gamma}$", r"$\mathrm{\beta}$", "$\mathrm{t_{fall}}$"]
+    # %%
+
+    # Retrieve the parameters
+    fitting_parameters_OP_Ia, fitting_parameters_TP_Ia = retrieve_parameters(SN_names_Ia, survey)
+    fitting_parameters_OP_II, fitting_parameters_TP_II = retrieve_parameters(SN_names_II, survey)
+
+    if len(fitting_parameters_TP_Ia) != 0:
+        fitting_parameters_Ia = np.concatenate((np.concatenate((fitting_parameters_OP_Ia, np.zeros((len(fitting_parameters_OP_Ia), 6))), axis = 1), fitting_parameters_TP_Ia))
+    else:
+        fitting_parameters_Ia = np.concatenate((fitting_parameters_OP_Ia, np.zeros((len(fitting_parameters_OP_Ia), 6))), axis = 1)
+    fitting_parameters_II = np.concatenate((np.concatenate((fitting_parameters_OP_II, np.zeros((len(fitting_parameters_OP_II), 6))), axis = 1), fitting_parameters_TP_II))
+    fitting_parameters = np.concatenate((fitting_parameters_Ia, fitting_parameters_II))
+    
+    number_of_peaks = np.concatenate((np.concatenate(([1] * len(fitting_parameters_OP_Ia), [2] * len(fitting_parameters_TP_Ia))), \
+                                    np.concatenate(([1] * len(fitting_parameters_OP_II), [2] * len(fitting_parameters_TP_II)))))
+    
+    fitting_parameter_names = ["$\mathrm{A}$", "$\mathrm{t_{0}}$", "$\mathrm{t_{rise}}$", "$\mathrm{\gamma}$", r"$\mathrm{\beta}$", "$\mathrm{t_{fall}}$"]
+
+    # plot_correlation(fitting_parameters_Ia[:, 1:7], fitting_parameters_II[:, 1:7], survey, f1, fitting_parameter_names)
+    # plot_correlation(fitting_parameters_Ia[:, 8:14], fitting_parameters_II[:, 8:14], survey, f2, fitting_parameter_names)
+
+    # plot_distribution(fitting_parameters_Ia[:, 1:7], fitting_parameters_II[:, 1:7], survey, f1, fitting_parameter_names)
+    # plot_distribution(fitting_parameters_Ia[:, 8:14], fitting_parameters_II[:, 8:14], survey, f2, fitting_parameter_names)
+
+    # %%
+
+    global_parameters_Ia = []
+    global_parameters_II = []
+
+    for idx in range(len(fitting_parameters_Ia)):
+        
+        parameter_values = calculate_global_parameters(fitting_parameters_Ia[idx, 0], survey, number_of_peaks[idx], fitting_parameters_Ia[idx, 1:])
+        global_parameters_Ia.append(parameter_values)
+
+    global_parameters_Ia = np.array(global_parameters_Ia)
+
+    for idx in range(len(fitting_parameters_II)):
+    
+        parameter_values = calculate_global_parameters(fitting_parameters_II[idx, 0], survey, number_of_peaks[idx], fitting_parameters_II[idx, 1:])
+        global_parameters_II.append(parameter_values)
+
+    global_parameters_II = np.array(global_parameters_II)
+
+    global_parameters = np.concatenate((global_parameters_Ia, global_parameters_II))
 
     global_names = ["Peak magnitude", "Rise time [days]", "$\mathrm{m_{peak - 10d} - m_{peak}}$", "$\mathrm{m_{peak + 15d} - m_{peak}}$", \
-                    "$\mathrm{m_{peak + 30d} - m_{peak}}$", "Duration above 50 %% of peak [days]", "Duration above 20 %% of peak [days]"]
+                    "$\mathrm{m_{peak + 30d} - m_{peak}}$", "Duration above 50 \% of peak [days]", "Duration above 20 \% of peak [days]"]
     
-    fitting_parameters, global_parameters, number_of_peaks, SN_labels, SN_labels_color = determine_parameters("ZTF")
-
-    # plot_correlation(parameters_one_peak_Ia[:, 1:7], parameters_one_peak_II[:, 1:7], survey, f1, parameters)
-    # plot_correlation(parameters_one_peak_Ia[:, 8:14], parameters_one_peak_II[:, 8:14], survey, f2, parameters)
-
-    # plot_distribution(parameters_one_peak_Ia[:, 1:7], parameters_one_peak_II[:, 1:7], survey, f1, parameters)
-    # plot_distribution(parameters_one_peak_Ia[:, 8:14], parameters_one_peak_II[:, 8:14], survey, f2, parameters)
-
-    # redshifts = retrieve_redshift(parameters_one_peak[:, 0], survey)
+    redshifts = retrieve_redshift(fitting_parameters[:, 0], survey)
     
-    # peak_abs_magnitude = []
-    # for idx in range(len(redshifts)):
+    peak_abs_magnitude = []
+    for idx in range(len(redshifts)):
 
-    #     peak_abs_magnitude.append(calculate_peak_absolute_magnitude(global_parameters[idx, 0], redshifts[idx]))
+        peak_abs_magnitude.append(calculate_peak_absolute_magnitude(global_parameters[idx, 0], redshifts[idx]))
 
     # plot_correlation(global_parameters_Ia[:, 0:7], global_parameters_II[:, 0:7], survey, f1, global_names)
     # plot_correlation(global_parameters_Ia[:, 7:15], global_parameters_II[:, 7:15], survey, f2, global_names)
+    
+    # plot_distribution(global_parameters_Ia[:, 0:7], global_parameters_II[:, 0:7], survey, f1, global_names)
+    # plot_distribution(global_parameters_Ia[:, 7:15], global_parameters_II[:, 7:15], survey, f2, global_names)
+
+    # %%
+
+    np.save(f"Data/Input_ML/{survey}/fitting_parameters.npy", fitting_parameters)
+    np.save(f"Data/Input_ML/{survey}/global_parameters.npy", global_parameters)
+    np.save(f"Data/Input_ML/{survey}/number_of_peaks.npy", number_of_peaks)
+    np.save(f"Data/Input_ML/{survey}/SN_labels.npy", SN_labels)
+    np.save(f"Data/Input_ML/{survey}/SN_labels_color.npy", SN_labels_color)
+
 # %%
