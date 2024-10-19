@@ -35,25 +35,28 @@ scaler = MinMaxScaler()
 
 class AutoEncoder(nn.Module):
 
-    def __init__(self, n_input, n_nodes):
+    def __init__(self, n_input, n_nodes, cluster_centres, alpha):
 
         # Initialize the attributes from the parent class (nn.Module)
         super().__init__() 
 
-        self.encoder = nn.Sequential(nn.Linear(n_input, n_nodes[0])) 
+        self.cluster_centres = cluster_centres
+        self.alpha = alpha
+
+        self.encoder = nn.Sequential(nn.Dropout(0.2))
+        self.encoder.append(nn.Linear(n_input, n_nodes[0]))
         self.encoder.append(nn.ReLU())
-        self.encoder.append(nn.Dropout(0.2))
         for idx in range(len(n_nodes) - 2):
+            self.encoder.append(nn.Dropout(0.2))
             self.encoder.append(nn.Linear(n_nodes[idx], n_nodes[idx + 1]))
             self.encoder.append(nn.ReLU())
-            self.encoder.append(nn.Dropout(0.2))
         self.encoder.append(nn.Linear(n_nodes[-2], n_nodes[-1]))
 
         self.decoder = nn.Sequential() 
         for idx in range(len(n_nodes) - 1, 0, -1):
+            self.encoder.append(nn.Dropout(0.2))
             self.decoder.append(nn.Linear(n_nodes[idx], n_nodes[idx - 1]))
             self.decoder.append(nn.ReLU())
-            self.encoder.append(nn.Dropout(0.2))
         self.decoder.append(nn.Linear(n_nodes[0], n_input))
         self.decoder.append(nn.Sigmoid())
     
@@ -64,23 +67,29 @@ class AutoEncoder(nn.Module):
     def decode(self, latent):
 
         return self.decoder(latent)
+    
+    def soft_assignment(self, encoded):
 
+        distance = (encoded.unsqueeze(1) - self.cluster_centres.unsqueeze(0)) ** 2
+        power = -(self.alpha + 1) / 2
+
+        student_t = (1 + distance / self.alpha) ** power
+        probability = student_t / torch.sum(student_t, dim = 1, keepdim = True)
+
+        return probability
+
+    def target_distribution(self, probability):
+
+        normalized_probability = (probability ** 2) / torch.sum(probability, dim = 0)
+        target_probability = normalized_probability / torch.sum(normalized_probability, dim = 1, keepdim = True)
+
+        return target_probability
+    
     def forward(self, input):
 
-        latent = self.encode(input)
-        decoded = self.decode(latent)
-        return decoded, mean, logvariance
-
-def VAE_loss(input, reconstructed, mean, logvariance):
-    
-    # Reconstruction loss 
-    recon_loss = nn.MSELoss()(reconstructed, input)
-    
-    # KL Divergence loss: D_KL(q(z|x) || p(z)) where q is the approximate and p is N(0, I)
-    kl_divergence_loss = -0.5 * torch.sum(1 + logvariance - mean.pow(2) - logvariance.exp())
-
-    # Combine both losses
-    return recon_loss + kl_divergence_loss
+        encoded = self.encode(input)
+        decoded = self.decode(encoded)
+        return decoded
 
 # %%
 
@@ -99,58 +108,83 @@ tensor_dataset = torch.tensor(parameters_scaled, dtype = torch.float32)
 dataset = TensorDataset(tensor_dataset, tensor_dataset)
 
 # Create DataLoader for minibatches
-dataloader = DataLoader(dataset, batch_size = 64, shuffle = True)
+dataloader = DataLoader(dataset, batch_size = 32, shuffle = True)
 
 length_parameters = len(parameters_scaled[0])
-vae = VariationalAutoEncoder(n_input = length_parameters, n_nodes = hidden_layers)
+autoencoder = AutoEncoder(n_input = length_parameters, n_nodes = hidden_layers, cluster_centres = None, alpha = 1)
+autoencoder.train()
 
-learning_rate = 1e-3
-# weight_decay = 1e-8 
-optimizer = torch.optim.Adam(vae.parameters(), lr = learning_rate) #, weight_decay = weight_decay)
+# Initialize parameters of AutoEncoder
+learning_rate = 1e-2
+initialization_loss = nn.MSELoss()
+initialization_optimizer = torch.optim.Adam(autoencoder.parameters(), lr = learning_rate) 
 
-epochs = 500
-validation_losses_averaged = []
-validation_losses = []
+epochs = 100
+
 for epoch in range(1, epochs):
 
-    validation_batch = random.randint(0, len(dataloader) - 1)
-
-    for idx, (input_parameters, _) in enumerate(dataloader):
-        input_parameters = input_parameters.reshape(-1, length_parameters)
-
-        if idx == validation_batch:
-            vae.eval()
-
-            with torch.no_grad():
-                reconstructed, mean, logvariance = vae(input_parameters)
-                
-                validation_loss = VAE_loss(input_parameters, reconstructed, mean, logvariance)
-                validation_losses.append(validation_loss.item())
-
-            vae.train()
-
-        else:
-            reconstructed, mean, logvariance = vae(input_parameters)
-            
-            training_loss = VAE_loss(input_parameters, reconstructed, mean, logvariance)
+    for input_parameters, _ in dataloader:
         
-            optimizer.zero_grad()
-            training_loss.backward()
-            optimizer.step()
+        input_parameters = input_parameters.reshape(-1, length_parameters)
+        reconstructed = autoencoder(input_parameters)
+            
+        training_loss = initialization_loss(input_parameters, reconstructed)
+    
+        initialization_optimizer.zero_grad()
+        training_loss.backward()
+        initialization_optimizer.step()
 
-    if epoch % 10 == 0:
+# Initialize cluster centres
+latent_dataset = autoencoder.encode(tensor_dataset).detach()
 
-        average_validation_loss = np.mean(validation_losses)
-        validation_losses_averaged.append(average_validation_loss)
-        validation_losses = []
+kmeans = KMeans(n_clusters = 2, random_state = 2804)
+kmeans.fit(latent_dataset.numpy())
+cluster_centres = torch.tensor(kmeans.cluster_centers_, dtype = torch.float, requires_grad = True)
+autoencoder.cluster_centres = cluster_centres
+print(cluster_centres)
+
+DEC_loss = nn.KLDivLoss(size_average = False)
+DEC_optimizer = torch.optim.SGD(autoencoder.encoder.parameters(), lr = learning_rate, momentum = 0.9)
+
+epochs = 500
+
+for epoch in range(1, epochs):
+
+    for input_parameters, _ in dataloader:
+        
+        input_parameters = input_parameters.reshape(-1, length_parameters)
+        
+        latent_parameters = autoencoder.encode(input_parameters)        
+        soft_probability = autoencoder.soft_assignment(latent_parameters)
+        target_probability = autoencoder.target_distribution(soft_probability)
+            
+        training_loss = DEC_loss(soft_probability.log(), target_probability)
+    
+        DEC_optimizer.zero_grad()
+        training_loss.backward()
+        DEC_optimizer.step()
+
+    print(autoencoder.cluster_centres)
+
+
+latent_dataset = autoencoder.encode(tensor_dataset).detach()
+
+kmeans = KMeans(n_clusters = 2, random_state = 2804)
+kmeans.fit(latent_dataset.numpy())
+cluster_centres = torch.tensor(kmeans.cluster_centers_, dtype = torch.float, requires_grad = True)
+print(cluster_centres)
+# %%
+
+
+# %%
+
+# # Defining the Plot Style
+# plt.style.use('fivethirtyeight')
+# plt.xlabel('Iterations')
+# plt.ylabel('Loss')
  
-# Defining the Plot Style
-plt.style.use('fivethirtyeight')
-plt.xlabel('Iterations')
-plt.ylabel('Loss')
- 
-# Plotting the last 100 values
-plt.plot(validation_losses_averaged)
+# # Plotting the last 100 values
+# plt.plot(validation_losses_averaged)
 
 # %%
 
