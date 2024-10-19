@@ -210,84 +210,76 @@ predictions = kmeans.fit_predict(latent_representation)
 plot_PCA_with_clusters(latent_representation, SN_labels, kmeans, best_number, number_of_peaks)
 
 # %%
-# # Initialize DEC
-# DEC = DeepEmbeddedClustering(autoencoder, cluster_centres = None, alpha = 1)
+# Initialize DEC
+DEC = DeepEmbeddedClustering(autoencoder, cluster_centres = None, alpha = 1)
 
-# # Initialize cluster centres
-# latent_dataset = autoencoder.encode(tensor_dataset).detach()
+# Initialize cluster centres
+latent_dataset = autoencoder.encode(tensor_dataset).detach()
 
-# kmeans = KMeans(n_clusters = 2, random_state = 2804)
-# previous_predictions = kmeans.fit_predict(latent_dataset.numpy())
+kmeans = KMeans(n_clusters = 2, random_state = 2804)
+previous_predictions = kmeans.fit_predict(latent_dataset.numpy())
 
-# cluster_centres = torch.tensor(kmeans.cluster_centers_, dtype = torch.float, requires_grad = True)
-# DEC.cluster_centres = torch.nn.Parameter(cluster_centres)
+cluster_centres = torch.tensor(kmeans.cluster_centers_, dtype = torch.float, requires_grad = True)
+DEC.cluster_centres = torch.nn.Parameter(cluster_centres)
 
-# DEC_loss = nn.KLDivLoss(size_average = False)
-# learning_rate = 1e-2
-# DEC_optimizer = torch.optim.SGD(DEC.parameters(), lr = learning_rate, momentum = 0.9)
+DEC_loss = nn.KLDivLoss(size_average = False)
+learning_rate = 1e-3
+DEC_optimizer = torch.optim.SGD(DEC.parameters(), lr = learning_rate, momentum = 0.9)
 
-# epochs = 500
-# previous_tolerance = 10
-# current_tolerance = 10
-# n_iterations = 0
+epochs = 500
+tolerance = 10
+n_iterations = 0
 
-# # for epoch in range(epochs):
-# while n_iterations < 2:
+# for epoch in range(epochs):
+while tolerance > 0.001:
     
-#     # print("yeh")
-
-#     for input_parameters, _ in dataloader:
+    for input_parameters, _ in dataloader:
         
-#         input_parameters = input_parameters.reshape(-1, length_parameters)
+        input_parameters = input_parameters.reshape(-1, length_parameters)
         
-#         latent_parameters = autoencoder.encode(input_parameters)        
-#         soft_probability = DEC.soft_assignment(latent_parameters)
-#         target_probability = DEC.target_distribution(soft_probability)
+        latent_parameters = autoencoder.encode(input_parameters)        
+        soft_probability = DEC.soft_assignment(latent_parameters)
+        target_probability = DEC.target_distribution(soft_probability)
             
-#         training_loss = DEC_loss(soft_probability.log(), target_probability)
+        training_loss = DEC_loss(soft_probability.log(), target_probability)
     
-#         DEC_optimizer.zero_grad()
-#         training_loss.backward()
-#         DEC_optimizer.step()
+        DEC_optimizer.zero_grad()
+        training_loss.backward()
+        DEC_optimizer.step()
 
-
-#     # Check tolerance
-#     latent_dataset = autoencoder.encode(tensor_dataset).detach()
-#     current_predictions = kmeans.fit_predict(latent_dataset.numpy())
-#     total_changes = np.sum(np.abs(current_predictions - previous_predictions))
-#     current_tolerance = total_changes/len(current_predictions)
-#     print(current_tolerance)
+    n_iterations += 1
     
-#     if previous_tolerance == 0 and current_tolerance == 0:
-#         n_iterations += 1
+    # Check tolerance
+    latent_dataset = autoencoder.encode(tensor_dataset).detach()
+    current_predictions = kmeans.fit_predict(latent_dataset.numpy())
+    total_changes = np.sum(np.abs(current_predictions - previous_predictions))
+    tolerance = total_changes/len(current_predictions)
+    print(tolerance)
 
-#     previous_predictions = current_predictions
-#     previous_tolerance = current_tolerance
+    previous_predictions = current_predictions
 
-# print("number of iterations", n_iterations)
+print("number of iterations", n_iterations)
 
-# latent_representation = autoencoder.encode(tensor_dataset).detach()
+latent_representation = autoencoder.encode(tensor_dataset).detach()
 
-# latent_representation_names = ["latent_dimension_1", "latent_dimension_2", "latent_dimension_3", "latent_dimension_4", "latent_dimension_5", "latent_dimension_6"]
+latent_representation_names = ["latent_dimension_1", "latent_dimension_2", "latent_dimension_3", "latent_dimension_4", "latent_dimension_5", "latent_dimension_6"]
 
-# # plot_PCA(latent_representation, SN_labels[one_peak], latent_representation_names[:2])
+kmeans = KMeans(n_clusters = 2, random_state = 2804)
+predictions = kmeans.fit_predict(latent_representation)
+kmeans.cluster_centers_ = kmeans.cluster_centers_.astype(np.float64)
 
-# kmeans = KMeans(n_clusters = 2, random_state = 2804)
-# kmeans.fit(latent_representation)
-# kmeans.cluster_centers_ = kmeans.cluster_centers_.astype(np.float64)
-
-# plot_PCA_with_clusters(latent_representation, SN_labels[one_peak], kmeans, 2, number_of_peaks[one_peak])
+plot_PCA_with_clusters(latent_representation, SN_labels[one_peak], kmeans, 2, number_of_peaks[one_peak])
 
 # %%
 
 cluster_0 = np.where(predictions == 0)
 cluster_1 = np.where(predictions == 1)
 
-print(fitting_parameters[:, 0][cluster_0])
-print(fitting_parameters[:, 0][cluster_1])
+print(fitting_parameters[one_peak, 0][0][cluster_0])
+print(fitting_parameters[one_peak, 0][0][cluster_1])
 
-print(SN_labels[cluster_0])
-print(SN_labels[cluster_1])
+print(SN_labels[one_peak][cluster_0])
+print(SN_labels[one_peak][cluster_1])
 # %%
 'ZTF23abgnvya' 'ZTF23aaynmrz'
 # %%
