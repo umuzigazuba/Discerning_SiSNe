@@ -70,7 +70,7 @@ def calculate_airmass(ra, dec, time):
     return airmass
 
 # Remove noisy/bad observations
-def ztf_remove_noisy_data(ra, dec, time, flux, fluxerr, filters, infobitssci, scisigpix, sciinpseeing, status, ccd, ccd_amplifier, ncalmatches, zero_point, zero_point_rms, reduced_chi_squared):
+def ztf_remove_noisy_data(ra, dec, ccd_threshold, time, flux, fluxerr, filters, infobitssci, scisigpix, sciinpseeing, status, ccd, ccd_amplifier, ncalmatches, zero_point, zero_point_rms, reduced_chi_squared):
 
     # Filter out bad processing epochs
     bad_observations = np.where(((status != "0") & (status != "56") & (status != "57") & (status != "62") & (status != "65")))[0]
@@ -89,7 +89,7 @@ def ztf_remove_noisy_data(ra, dec, time, flux, fluxerr, filters, infobitssci, sc
     time = np.delete(time, indices_to_delete).astype(np.float32)
     flux = np.delete(flux, indices_to_delete).astype(np.float32)
     fluxerr = np.delete(fluxerr, indices_to_delete).astype(np.float32)
-    filter = np.delete(filter, indices_to_delete)
+    filters = np.delete(filters, indices_to_delete)
 
     ccd = np.delete(ccd, indices_to_delete).astype(np.float32)
     ccd_amplifier = np.delete(ccd_amplifier, indices_to_delete).astype(np.float32)
@@ -102,15 +102,15 @@ def ztf_remove_noisy_data(ra, dec, time, flux, fluxerr, filters, infobitssci, sc
     airmass = calculate_airmass(ra, dec, time)
     rcid = 4 * (ccd - 1) + ccd_amplifier - 1
 
-    quality_cuts_f1 = np.where((filter == "ZTF_r") & ((zero_point > (26.65 - 0.15 * airmass)) | (zero_point_rms > 0.05) | (ncalmatches < 120) | (zero_point < (ccd_threshold["r"].iloc[rcid].to_numpy() - 0.15 * airmass))))[0]
-    quality_cuts_f2 = np.where((filter == "ZTF_g") & ((zero_point > (26.7 - 0.2 * airmass)) | (zero_point_rms > 0.06) | (ncalmatches < 80) | (zero_point < (ccd_threshold["g"].iloc[rcid].to_numpy() - 0.2 * airmass))))[0]
+    quality_cuts_f1 = np.where((filters == "ZTF_r") & ((zero_point > (26.65 - 0.15 * airmass)) | (zero_point_rms > 0.05) | (ncalmatches < 120) | (zero_point < (ccd_threshold["r"].iloc[rcid].to_numpy() - 0.15 * airmass))))[0]
+    quality_cuts_f2 = np.where((filters == "ZTF_g") & ((zero_point > (26.7 - 0.2 * airmass)) | (zero_point_rms > 0.06) | (ncalmatches < 80) | (zero_point < (ccd_threshold["g"].iloc[rcid].to_numpy() - 0.2 * airmass))))[0]
 
     indices_to_delete = np.sort(np.unique(np.concatenate((quality_cuts_f1, quality_cuts_f2))))
 
     time = np.delete(time, indices_to_delete) -  2400000.5
     flux = np.delete(flux, indices_to_delete) / 10
     fluxerr = np.delete(fluxerr, indices_to_delete) / 10
-    filter = np.delete(filter, indices_to_delete)
+    filters = np.delete(filters, indices_to_delete)
 
     zero_point = np.delete(zero_point, indices_to_delete)
     reduced_chi_squared = np.delete(reduced_chi_squared, indices_to_delete)
@@ -385,6 +385,8 @@ def ztf_data_processing(ztf_names, survey_information):
 
     for name in ztf_names:
 
+        print(name)
+
         # Retrieve the data
         time, flux, fluxerr, filters, infobitssci, scisigpix, sciinpseeing, status, ccd, ccd_amplifier, ncalmatches, zero_point, zero_point_rms, reduced_chi_squared = ztf_retrieve_data(name)
 
@@ -397,7 +399,7 @@ def ztf_data_processing(ztf_names, survey_information):
         SN_type = survey_information["Obj. Type"].values[SN_idx][0]
 
         # Remove noisy/bad observations
-        time, flux, fluxerr, filters, zero_point, reduced_chi_squared = ztf_remove_noisy_data(ra, dec, time, flux, fluxerr, filters, infobitssci, scisigpix, sciinpseeing, status, ccd, ccd_amplifier, ncalmatches, zero_point, zero_point_rms, reduced_chi_squared)
+        time, flux, fluxerr, filters, zero_point, reduced_chi_squared = ztf_remove_noisy_data(ra, dec, ccd_threshold, time, flux, fluxerr, filters, infobitssci, scisigpix, sciinpseeing, status, ccd, ccd_amplifier, ncalmatches, zero_point, zero_point_rms, reduced_chi_squared)
 
         # Filter the data based on the used filter
         filter_f1 = np.where(filters == f"ZTF_{f1}")
@@ -443,36 +445,29 @@ def ztf_data_processing(ztf_names, survey_information):
             filter_f1 = np.where(filters == f1)
             filter_f2 = np.where(filters == f2)
 
-            if len(filter_f1[0]) != 0 and len(filter_f2[0]) != 0:
+            if len(filter_f1[0]) >= 5 and len(filter_f2[0]) >= 5:
                 # Find extrema
                 SN_extrema = find_baseline(flux, filter_f1, filter_f2, 2)
                 SN_extrema = np.concatenate((SN_extrema["Extrema f1"], SN_extrema["Extrema f2"]))
 
-                new_filters = np.concatenate((filters[filter_f1][SN_extrema[0] : SN_extrema[1]], filters[filter_f2][SN_extrema[2] : SN_extrema[3]]))
-                new_filter_f1 = np.where(new_filters == f1)
-                new_filter_f2 = np.where(new_filters == f2)
+                # Save data
+                SN_data = np.column_stack((time, flux, fluxerr, filters))
+                np.save(f"Data/ZTF_forced_photometry_data/processed/{name}_data.npy", SN_data)
+                np.save(f"Data/ZTF_forced_photometry_data/processed/{name}_extrema.npy", SN_extrema)
 
-                # We only consider light curves with data in both filters 
-                if len(new_filter_f1[0]) >= 5 and len(new_filter_f2[0]) >= 5:
+                # Save name to file 
+                if SN_type == "SN Ia-CSM":
+                    names_file = open("Data/ZTF_SNe_Ia_CSM.txt", "a")
+                    names_file.write(name + "\n")
+                    names_file.close()
+                
+                elif SN_type == "SN IIn":
+                    names_file = open("Data/ZTF_SNe_IIn.txt", "a")
+                    names_file.write(name + "\n")
+                    names_file.close()
 
-                    # Save data
-                    SN_data = np.column_stack((time, flux, fluxerr, filters))
-                    np.save(f"Data/ZTF_forced_photometry_data/processed/{name}_data.npy", SN_data)
-                    np.save(f"Data/ZTF_forced_photometry_data/processed/{name}_extrema.npy", SN_extrema)
-
-                    # Save name to file 
-                    if SN_type == "SN Ia-CSM":
-                        names_file = open("Data/ZTF_SNe_Ia_CSM.txt", "a")
-                        names_file.write(name + "\n")
-                        names_file.close()
-                    
-                    elif SN_type == "SN IIn":
-                        names_file = open("Data/ZTF_SNe_IIn.txt", "a")
-                        names_file.write(name + "\n")
-                        names_file.close()
-
-                    # Save plot 
-                    ztf_plot_data(name, time, flux, fluxerr, filters, SN_extrema, save_fig = True)
+                # Save plot 
+                ztf_plot_data(name, time, flux, fluxerr, filters, SN_extrema, save_fig = True)
 
 def atlas_data_processing(atlas_names, survey_information):
 
@@ -483,6 +478,8 @@ def atlas_data_processing(atlas_names, survey_information):
     f2_wavelength = 5182.42
 
     for name in atlas_names:
+
+        print(name)
             
         # Retrieve the data
         time, flux, fluxerr, filters = atlas_retrieve_data(name)
@@ -538,36 +535,29 @@ def atlas_data_processing(atlas_names, survey_information):
             filter_f1 = np.where(filters == f1)
             filter_f2 = np.where(filters == f2)
 
-            if len(filter_f1[0]) != 0 and len(filter_f2[0]) != 0:
+            if len(filter_f1[0]) >= 5 and len(filter_f2[0]) >= 5:
                 # Find extrema
                 SN_extrema = find_baseline(flux, filter_f1, filter_f2, 2)
                 SN_extrema = np.concatenate((SN_extrema["Extrema f1"], SN_extrema["Extrema f2"]))
 
-                new_filters = np.concatenate((filters[filter_f1][SN_extrema[0] : SN_extrema[1]], filters[filter_f2][SN_extrema[2] : SN_extrema[3]]))
-                new_filter_f1 = np.where(new_filters == f1)
-                new_filter_f2 = np.where(new_filters == f2)
+                # Save data
+                SN_data = np.column_stack((time, flux, fluxerr, filters))
+                np.save(f"Data/ATLAS_forced_photometry_data/processed/{internal_name}_data.npy", SN_data)
+                np.save(f"Data/ATLAS_forced_photometry_data/processed/{internal_name}_extrema.npy", SN_extrema)
 
-                # We only consider light curves with data in both filters 
-                if len(new_filter_f1[0]) >= 5 and len(new_filter_f2[0]) >= 5:
+                # Save name to file 
+                if SN_type == "SN Ia-CSM":
+                    names_file = open("Data/ATLAS_SNe_Ia_CSM.txt", "a")
+                    names_file.write(internal_name + "\n")
+                    names_file.close()
+                
+                elif SN_type == "SN IIn":
+                    names_file = open("Data/ATLAS_SNe_IIn.txt", "a")
+                    names_file.write(internal_name + "\n")
+                    names_file.close()
 
-                    # Save data
-                    SN_data = np.column_stack((time, flux, fluxerr, filters))
-                    np.save(f"Data/ATLAS_forced_photometry_data/processed/{internal_name}_data.npy", SN_data)
-                    np.save(f"Data/ATLAS_forced_photometry_data/processed/{internal_name}_extrema.npy", SN_extrema)
-
-                    # Save name to file 
-                    if SN_type == "SN Ia-CSM":
-                        names_file = open("Data/ATLAS_SNe_Ia_CSM.txt", "a")
-                        names_file.write(internal_name + "\n")
-                        names_file.close()
-                    
-                    elif SN_type == "SN IIn":
-                        names_file = open("Data/ATLAS_SNe_IIn.txt", "a")
-                        names_file.write(internal_name + "\n")
-                        names_file.close()
-
-                    # Save plot 
-                    atlas_plot_data(internal_name, time, flux, fluxerr, filters, SN_extrema, save_fig = True)
+                # Save plot 
+                atlas_plot_data(internal_name, time, flux, fluxerr, filters, SN_extrema, save_fig = True)
             
 # %%
 
