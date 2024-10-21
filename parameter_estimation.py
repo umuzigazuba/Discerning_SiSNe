@@ -60,7 +60,7 @@ parameter_bounds_one_peak = ([-0.3, -100, -2, 0, 0, 0, -3, -1, -50, -1.5, -1.5, 
 
 parameter_bounds_gaussian = ([0, -500, 0, -2.0, -2.0, -2.0], [1, 500, 150, 2.0, 2.0, 2.5])
 
-parameter_bounds_two_peaks = ([-0.3, -100, -2, 0, 0, 0, -3, -1, -50, -1.5, -1.5, -2, -1.5, -1.5, 0, -500, 0, -2.0, -2.0, -2.0], [0.5, 30, 4, 3.5, 0.03, 4, -0.8, 1, 30, 1.5, 1.5, 1, 1.5, -1, 1, 500, 150, 2.0, 2.0, 2.0])
+parameter_bounds_two_peaks = ([-0.3, -100, -2, 0, 0, 0, -3, -1, -50, -1.5, -1.5, -2, -1.5, -1.5, 0, -500, 0, -2.0, -2.0, -2.0], [0.5, 30, 4, 3.5, 0.03, 4, -0.8, 1, 30, 1.5, 1.5, 1, 1.5, -1, 1, 500, 150, 2.0, 2.0, 2.5])
 
 def prior_one_peak(cube, ndim, nparams):
 
@@ -1040,9 +1040,9 @@ if __name__ == '__main__':
         
         fit_light_curve(SN_id, survey)
 
-    survey = "ATLAS"
-    for SN_id in atlas_names_sn_IIn:
+    # survey = "ATLAS"
+    # for SN_id in atlas_names_sn_Ia_CSM:
 
-        fit_light_curve(SN_id, survey)
+    #     fit_light_curve(SN_id, survey)
 
 # %%
