@@ -1,7 +1,8 @@
 # %% 
 
-from astropy.coordinates import SkyCoord
-from astropy import units as u
+import astropy.units as u
+from astropy.time import Time
+from astropy.coordinates import EarthLocation, SkyCoord, AltAz
 from dustmaps.sfd import SFDQuery
 from extinction import fm07, remove
 
@@ -43,18 +44,37 @@ def ztf_retrieve_data(ztf_name):
     sciinpseeing = np.array(ztf_data[:, 7]).astype(np.float32)
     status = np.array(ztf_data[:, -1]).astype(str)
 
-    zero_point = np.array(ztf_data[:, 20])
+    ccd = np.array(ztf_data[:, 2])
+    ccd_amplifier = np.array(ztf_data[:, 3])
+    ncalmatches = np.array(ztf_data[:, 15])
+
+    zero_point = np.array(ztf_data[:, 10])
+    zero_point_rms = np.array(ztf_data[:, 12])
     reduced_chi_squared = np.array(ztf_data[:, 27])
 
     return time, flux, fluxerr, filters, infobitssci, scisigpix, \
-           sciinpseeing, status, zero_point, reduced_chi_squared
+           sciinpseeing, status, ccd, ccd_amplifier, ncalmatches, \
+           zero_point, zero_point_rms, reduced_chi_squared
+
+# Calulate airmass for quality cuts
+def calculate_airmass(ra, dec, time):
+
+    palomar = EarthLocation.of_site('Palomar')
+
+    target = SkyCoord(ra, dec, unit = (u.hourangle, u.deg))
+    time = Time(time, format = "jd")
+
+    target_in_altaz = target.transform_to(AltAz(obstime = time, location = palomar))
+    airmass = target_in_altaz.secz.value
+
+    return airmass
 
 # Remove noisy/bad observations
-def ztf_remove_noisy_data(time, flux, fluxerr, filters, infobitssci, scisigpix, sciinpseeing, status, zero_point, reduced_chi_squared):
+def ztf_remove_noisy_data(ra, dec, time, flux, fluxerr, filters, infobitssci, scisigpix, sciinpseeing, status, ccd, ccd_amplifier, ncalmatches, zero_point, zero_point_rms, reduced_chi_squared):
 
     # Filter out bad processing epochs
     bad_observations = np.where(((status != "0") & (status != "56") & (status != "57") & (status != "62") & (status != "65")))[0]
-    
+
     # Filter out data with missing flux measurements
     missing_data = np.where(flux == "null")[0]
 
@@ -63,16 +83,37 @@ def ztf_remove_noisy_data(time, flux, fluxerr, filters, infobitssci, scisigpix, 
     bad_scisigpix = np.where(scisigpix > 25)[0]
     bad_sciinpseeing = np.where(sciinpseeing > 4)[0]
 
+    # Delte bad data 
     indices_to_delete = np.sort(np.unique(np.concatenate((bad_observations, missing_data, bad_infobitssci, bad_scisigpix, bad_sciinpseeing))))
 
-    # Remove the bad observations
-    time = np.delete(time, indices_to_delete).astype(np.float32) -  2400000.5
-    flux = np.delete(flux, indices_to_delete).astype(np.float32) / 10 # divide by ten to convert to micro Jansky
-    fluxerr = np.delete(fluxerr, indices_to_delete).astype(np.float32) / 10 # divide by ten to convert to micro Jansky
-    filters = np.delete(filters, indices_to_delete)
+    time = np.delete(time, indices_to_delete).astype(np.float32)
+    flux = np.delete(flux, indices_to_delete).astype(np.float32)
+    fluxerr = np.delete(fluxerr, indices_to_delete).astype(np.float32)
+    filter = np.delete(filter, indices_to_delete)
 
+    ccd = np.delete(ccd, indices_to_delete).astype(np.float32)
+    ccd_amplifier = np.delete(ccd_amplifier, indices_to_delete).astype(np.float32)
+    ncalmatches = np.delete(ncalmatches, indices_to_delete).astype(np.float32)
     zero_point = np.delete(zero_point, indices_to_delete).astype(np.float32)
+    zero_point_rms = np.delete(zero_point_rms, indices_to_delete).astype(np.float32)
     reduced_chi_squared = np.delete(reduced_chi_squared, indices_to_delete).astype(np.float32)
+
+    # Quality cuts
+    airmass = calculate_airmass(ra, dec, time)
+    rcid = 4 * (ccd - 1) + ccd_amplifier - 1
+
+    quality_cuts_f1 = np.where((filter == "ZTF_r") & ((zero_point > (26.65 - 0.15 * airmass)) | (zero_point_rms > 0.05) | (ncalmatches < 120) | (zero_point < (ccd_threshold["r"].iloc[rcid].to_numpy() - 0.15 * airmass))))[0]
+    quality_cuts_f2 = np.where((filter == "ZTF_g") & ((zero_point > (26.7 - 0.2 * airmass)) | (zero_point_rms > 0.06) | (ncalmatches < 80) | (zero_point < (ccd_threshold["g"].iloc[rcid].to_numpy() - 0.2 * airmass))))[0]
+
+    indices_to_delete = np.sort(np.unique(np.concatenate((quality_cuts_f1, quality_cuts_f2))))
+
+    time = np.delete(time, indices_to_delete) -  2400000.5
+    flux = np.delete(flux, indices_to_delete) / 10
+    fluxerr = np.delete(fluxerr, indices_to_delete) / 10
+    filter = np.delete(filter, indices_to_delete)
+
+    zero_point = np.delete(zero_point, indices_to_delete)
+    reduced_chi_squared = np.delete(reduced_chi_squared, indices_to_delete)
 
     return time, flux, fluxerr, filters, \
            zero_point, reduced_chi_squared
@@ -339,10 +380,13 @@ def ztf_data_processing(ztf_names, survey_information):
     f1_wavelength = 6366.38
     f2_wavelength = 4746.48
 
+    ccd_threshold = pd.read_csv("Data/zp_thresholds_quadID.txt", comment = "#", delimiter = " |\t", header = None, engine = "python")
+    ccd_threshold.columns = ["index", "g", "ignore_1", "ignore_2", "r", "ignore_3", "ignore_4", "i"]
+
     for name in ztf_names:
 
         # Retrieve the data
-        time, flux, fluxerr, filters, infobitssci, scisigpix, sciinpseeing, status, zero_point, reduced_chi_squared = ztf_retrieve_data(name)
+        time, flux, fluxerr, filters, infobitssci, scisigpix, sciinpseeing, status, ccd, ccd_amplifier, ncalmatches, zero_point, zero_point_rms, reduced_chi_squared = ztf_retrieve_data(name)
 
         # Retrieve supernova properties
         SN_idx = np.where(survey_information["Disc. Internal Name"] == name)
@@ -353,7 +397,7 @@ def ztf_data_processing(ztf_names, survey_information):
         SN_type = survey_information["Obj. Type"].values[SN_idx][0]
 
         # Remove noisy/bad observations
-        time, flux, fluxerr, filters, zero_point, reduced_chi_squared = ztf_remove_noisy_data(time, flux, fluxerr, filters, infobitssci, scisigpix, sciinpseeing, status, zero_point, reduced_chi_squared)
+        time, flux, fluxerr, filters, zero_point, reduced_chi_squared = ztf_remove_noisy_data(ra, dec, time, flux, fluxerr, filters, infobitssci, scisigpix, sciinpseeing, status, ccd, ccd_amplifier, ncalmatches, zero_point, zero_point_rms, reduced_chi_squared)
 
         # Filter the data based on the used filter
         filter_f1 = np.where(filters == f"ZTF_{f1}")
