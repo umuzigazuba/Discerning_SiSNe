@@ -58,9 +58,9 @@ std_two_peaks = initial_std_two_peaks
 
 parameter_bounds_one_peak = ([-0.3, -100, -2, 0, 0, 0, -3, -1, -50, -1.5, -1.5, -2, -1.5, -1.5], [0.5, 30, 4, 3.5, 0.03, 4, -0.8, 1, 30, 1.5, 1.5, 1, 1.5, -1])
 
-parameter_bounds_gaussian = ([0, -300, 0, 0.5, 0.5, 0.5], [1, 300, 150, 2.0, 2.0, 2.0])
+parameter_bounds_gaussian = ([0, -500, 0, -2.0, -2.0, -2.0], [1, 500, 150, 2.0, 2.0, 2.5])
 
-parameter_bounds_two_peaks = ([-0.3, -100, -2, 0, 0, 0, -3, -1, -50, -1.5, -1.5, -2, -1.5, -1.5, 0, -300, 0, 0.5, 0.5, 0.5], [0.5, 30, 4, 3.5, 0.03, 4, -0.8, 1, 30, 1.5, 1.5, 1, 1.5, -1, 1, 300, 150, 2.0, 2.0, 2.0])
+parameter_bounds_two_peaks = ([-0.3, -100, -2, 0, 0, 0, -3, -1, -50, -1.5, -1.5, -2, -1.5, -1.5, 0, -500, 0, -2.0, -2.0, -2.0], [0.5, 30, 4, 3.5, 0.03, 4, -0.8, 1, 30, 1.5, 1.5, 1, 1.5, -1, 1, 500, 150, 2.0, 2.0, 2.0])
 
 def prior_one_peak(cube, ndim, nparams):
 
@@ -849,15 +849,6 @@ def fit_light_curve(SN_id, survey):
         # Load the data
         time, flux, fluxerr, filters, boundaries = atlas_load_data(SN_id)
 
-    # Only consider data belonging to the supernova explosion
-    f1_values = np.where(filters == f1)
-    f2_values = np.where(filters == f2)
-
-    time = np.concatenate((time[f1_values][boundaries[0] : boundaries[1]], time[f2_values][boundaries[2] : boundaries[3]]))
-    flux = np.concatenate((flux[f1_values][boundaries[0] : boundaries[1]], flux[f2_values][boundaries[2] : boundaries[3]]))
-    fluxerr = np.concatenate((fluxerr[f1_values][boundaries[0] : boundaries[1]], fluxerr[f2_values][boundaries[2] : boundaries[3]]))
-    filters = np.concatenate((filters[f1_values][boundaries[0] : boundaries[1]], filters[f2_values][boundaries[2] : boundaries[3]]))
-
     f1_values = np.where(filters == f1)
     f2_values = np.where(filters == f2)
 
@@ -870,7 +861,7 @@ def fit_light_curve(SN_id, survey):
     time -= peak_time
 
     ###### Augment data ######
-    amount_aug = 70
+    amount_aug = 50
 
     time_aug, flux_aug, fluxerr_aug, filters_aug = augment_data(survey, peak_time, amount_aug)
 
@@ -951,7 +942,8 @@ def fit_light_curve(SN_id, survey):
             down_bound = parameter_bounds_gaussian[0]
             up_bound = parameter_bounds_gaussian[1]
 
-            if not ((down_bound <= guess_parameters) & (guess_parameters <= up_bound)).all():
+            if not ((down_bound <= list(guess_parameters)) & (list(guess_parameters) <= up_bound)):
+
                 # The one-peak light curve is a better fit
                 np.save(f"Data/Analytical_parameters/{survey}/one_peak/{SN_id}_parameters_OP", one_peak_parameters)
                 
@@ -974,7 +966,7 @@ def fit_light_curve(SN_id, survey):
                 except RuntimeError:
                     second_peak_parameters = guess_parameters
 
-                except ValueError:
+                except ValueError:                  
                     # The one-peak light curve is a better fit
                     np.save(f"Data/Analytical_parameters/{survey}/one_peak/{SN_id}_parameters_OP", one_peak_parameters)
 
@@ -1000,8 +992,6 @@ def fit_light_curve(SN_id, survey):
                 flux = original_flux
 
                 initial_guesses = list(residual_parameters) + list(second_peak_parameters)
-
-                mean_two_peaks = initial_guesses
 
                 # Estimate the parameters of the full light curve in both bands simultaneously
                 try:
@@ -1030,12 +1020,14 @@ def fit_light_curve(SN_id, survey):
             # The two-peaks light curve is a better fit
             np.save(f"Data/Analytical_parameters/{survey}/two_peaks/{SN_id}_parameters_TP", two_peaks_parameters) 
 
+            # Still save one-peak parameters for further analysis
+            np.save(f"Data/Analytical_parameters/{survey}/one_peak/{SN_id}_parameters_OP", one_peak_parameters)
+
             with open(f"Data/Analytical_parameters/{survey}/two_peaks/red_chi_squared_TP.csv", "a", newline = "") as file:
                 writer = csv.writer(file)
                 writer.writerow([SN_id, red_chi_squared_TP])
 
             # Plot the results
-
             flux_fit_TP = light_curve_two_peaks(time_fit, two_peaks_parameters, peak_flux, f1_values_fit, f2_values_fit)
             plot_best_fit_light_curve(SN_id, red_chi_squared_TP, time_fit, flux_fit_TP, f1_values_fit, f2_values_fit, peak_time, amount_fit, f"{survey}/two_peaks/Best_fit_{SN_id}_TP")
 
@@ -1045,6 +1037,7 @@ if __name__ == '__main__':
     
     survey = "ZTF"
     for SN_id in ztf_names_sn_IIn:
+        
         fit_light_curve(SN_id, survey)
 
     survey = "ATLAS"
