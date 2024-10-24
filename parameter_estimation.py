@@ -626,7 +626,7 @@ def run_find_parameters(SN_id, survey, return_dict):
     return_dict['parameters'] = parameters
     return_dict['chi_squared'] = chi_squared
 
-def find_parameters_with_timeout(SN_id, survey, timeout = 300):
+def find_parameters_with_timeout(SN_id, survey, timeout = 600):
     """Wrapper to run find_parameters_one_peak with a timeout"""
     manager = multiprocessing.Manager()
     return_dict = manager.dict()
@@ -1102,13 +1102,13 @@ def fit_light_curve(SN_id, survey):
 if __name__ == '__main__':
     
     survey = "ZTF"
-    for SN_id in ztf_names_sn_IIn[83:84]:
+    for SN_id in ztf_names_sn_Ia_CSM:
         
         fit_light_curve(SN_id, survey)
 
-    # survey = "ATLAS"
-    # for SN_id in atlas_names_sn_Ia_CSM:
+    survey = "ATLAS"
+    for SN_id in atlas_names_sn_Ia_CSM:
 
-    #     fit_light_curve(SN_id, survey)
+        fit_light_curve(SN_id, survey)
 
 # %%
