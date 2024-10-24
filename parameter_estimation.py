@@ -7,6 +7,8 @@ import numpy as np
 import pandas as pd
 import os
 import csv
+import time as t
+import multiprocessing
 
 from scipy.stats import truncnorm
 from scipy.signal import find_peaks, peak_prominences, peak_widths
@@ -58,9 +60,9 @@ std_two_peaks = initial_std_two_peaks
 
 parameter_bounds_one_peak = ([-0.3, -100, -2, 0, 0, 0, -3, -1, -50, -1.5, -1.5, -2, -1.5, -1.5], [0.5, 30, 4, 3.5, 0.03, 4, -0.8, 1, 30, 1.5, 1.5, 1, 1.5, -1])
 
-parameter_bounds_gaussian = ([0, -500, 0, -2.0, -2.0, -2.0], [1, 500, 150, 2.0, 2.0, 2.5])
+parameter_bounds_gaussian = ([0, -500, 0, -0.75, -0.75, -0.75], [1, 500, 150, 1.5, 1.5, 2.5])
 
-parameter_bounds_two_peaks = ([-0.3, -100, -2, 0, 0, 0, -3, -1, -50, -1.5, -1.5, -2, -1.5, -1.5, 0, -500, 0, -2.0, -2.0, -2.0], [0.5, 30, 4, 3.5, 0.03, 4, -0.8, 1, 30, 1.5, 1.5, 1, 1.5, -1, 1, 500, 150, 2.0, 2.0, 2.5])
+parameter_bounds_two_peaks = ([-0.3, -100, -2, 0, 0, 0, -3, -1, -50, -1.5, -1.5, -2, -1.5, -1.5, 0, -500, 0, -0.75, -0.75, -0.75], [0.5, 30, 4, 3.5, 0.03, 4, -0.8, 1, 30, 1.5, 1.5, 1, 1.5, -1, 1, 500, 150, 1.5, 1.5, 2.5])
 
 def prior_one_peak(cube, ndim, nparams):
 
@@ -617,7 +619,39 @@ def find_parameters_one_peak(SN_id, survey):
     red_chi_squared = np.median(posterior_red_chi_squared)
     
     return np.array(parameter_values), red_chi_squared
+
+def run_find_parameters(SN_id, survey, return_dict):
+    """Function to be run in a separate process"""
+    parameters, chi_squared = find_parameters_one_peak(SN_id, survey)
+    return_dict['parameters'] = parameters
+    return_dict['chi_squared'] = chi_squared
+
+def find_parameters_with_timeout(SN_id, survey, timeout = 300):
+    """Wrapper to run find_parameters_one_peak with a timeout"""
+    manager = multiprocessing.Manager()
+    return_dict = manager.dict()
+    
+    # Create a new process
+    process = multiprocessing.Process(target=run_find_parameters, args=(SN_id, survey, return_dict))
+    
+    # Start the process
+    process.start()
+    
+    # Wait for the process to complete or timeout
+    process.join(timeout)
+    
+    if process.is_alive():
+        # If process is still running after the timeout, terminate it
+        print("Function took too long! Terminating...")
+        process.terminate()
+        process.join()  # Ensure the process has ended
         
+        # Timeout case: return empty array and infinite chi-squared
+        return np.array([]), np.inf
+    else:
+        # Process completed within time limit
+        return return_dict['parameters'], return_dict['chi_squared']   
+
 # %%
 
 ######################################## SECOND PEAK #########################################################
@@ -853,12 +887,26 @@ def fit_light_curve(SN_id, survey):
     f2_values = np.where(filters == f2)
 
     # Shift the light curve so that the main peak is at time = 0 MJD
-    if f1 in filters:
-        peak_main_idx = np.argmax(flux[f1_values])
-        peak_time = np.copy(time[peak_main_idx])
-        peak_flux = np.copy(flux[peak_main_idx])
+    peak_main_idx = np.argmax(flux[f1_values])
+    peak_time = np.copy(time[peak_main_idx])
         
     time -= peak_time
+
+    # Delete datapoint 250 days before and 550 days after the peak 
+    to_be_deleted = np.where((time < -250) | (time > 550))
+
+    time = np.delete(time, to_be_deleted)
+    flux = np.delete(flux, to_be_deleted)
+    fluxerr = np.delete(fluxerr, to_be_deleted)
+    filters = np.delete(filters, to_be_deleted)
+
+    f1_values = np.where(filters == f1)
+    f2_values = np.where(filters == f2)
+
+    peak_main_idx = np.argmax(flux[f1_values])
+    peak_time = np.copy(time[peak_main_idx])
+    peak_flux = np.copy(flux[peak_main_idx])
+
 
     ###### Augment data ######
     amount_aug = 50
@@ -883,26 +931,30 @@ def fit_light_curve(SN_id, survey):
     if extrema_f1[2] == -1 and extrema_f2[2] == -1:
         # Only a one-peak light curve can be fit through the data
 
-        # Nested sampling
-        one_peak_parameters, red_chi_squared = find_parameters_one_peak(SN_id, survey)
+        one_peak_parameters, red_chi_squared = find_parameters_with_timeout(SN_id, survey)
 
-        # Plot the results
-        np.save(f"Data/Analytical_parameters/{survey}/one_peak/{SN_id}_parameters_OP", one_peak_parameters)
-        red_chi_squared = reduced_chi_squared_one_peak(one_peak_parameters)
+        if len(one_peak_parameters) != 0:
+            # Plot the results
+            np.save(f"Data/Analytical_parameters/{survey}/one_peak/{SN_id}_parameters_OP", one_peak_parameters)
+            red_chi_squared = reduced_chi_squared_one_peak(one_peak_parameters)
 
-        with open(f"Data/Analytical_parameters/{survey}/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
-            writer = csv.writer(file)
-            writer.writerow([SN_id, red_chi_squared])
-        
-        flux_fit = light_curve_one_peak(time_fit, one_peak_parameters, peak_flux, f1_values_fit, f2_values_fit)
-        plot_best_fit_light_curve(SN_id, red_chi_squared, time_fit, flux_fit, f1_values_fit, f2_values_fit, peak_time, amount_fit, f"{survey}/one_peak/Best_fit_{SN_id}_OP")
+            with open(f"Data/Analytical_parameters/{survey}/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
+                writer = csv.writer(file)
+                writer.writerow([SN_id, red_chi_squared])
+            
+            flux_fit = light_curve_one_peak(time_fit, one_peak_parameters, peak_flux, f1_values_fit, f2_values_fit)
+            plot_best_fit_light_curve(SN_id, red_chi_squared, time_fit, flux_fit, f1_values_fit, f2_values_fit, peak_time, amount_fit, f"{survey}/one_peak/Best_fit_{SN_id}_OP")
 
     else: 
         # There is a possibility that there is a second peak
 
         ### Fit a one-peak light curve
-        # Nested sampling
-        one_peak_parameters, red_chi_squared_OP = find_parameters_one_peak(SN_id, survey)
+            
+        one_peak_parameters, red_chi_squared_OP = find_parameters_with_timeout(SN_id, survey)
+
+        if len(one_peak_parameters) == 0:
+            # This light curve cannot be fit
+            return
                
         ## Fit a two-peaks light curve
         # Identify the main filter for the second peak ("r" if it contains a peak)
@@ -966,7 +1018,7 @@ def fit_light_curve(SN_id, survey):
                 except RuntimeError:
                     second_peak_parameters = guess_parameters
 
-                except ValueError:                  
+                except ValueError:        
                     # The one-peak light curve is a better fit
                     np.save(f"Data/Analytical_parameters/{survey}/one_peak/{SN_id}_parameters_OP", one_peak_parameters)
 
@@ -987,7 +1039,21 @@ def fit_light_curve(SN_id, survey):
                 original_flux = np.copy(flux)
                 flux -= flux_peak_fit
 
-                residual_parameters, _ = find_parameters_one_peak(SN_id, survey)
+                residual_parameters, _ = find_parameters_with_timeout(SN_id, survey)
+
+                if len(residual_parameters) == 0:
+                    # The one-peak light curve is a better fit
+                    np.save(f"Data/Analytical_parameters/{survey}/one_peak/{SN_id}_parameters_OP", one_peak_parameters)
+
+                    with open(f"Data/Analytical_parameters/{survey}/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
+                        writer = csv.writer(file)
+                        writer.writerow([SN_id, red_chi_squared_OP])
+
+                    # Plot the results
+                    flux_fit = light_curve_one_peak(time_fit, one_peak_parameters, peak_flux, f1_values_fit, f2_values_fit)
+                    plot_best_fit_light_curve(SN_id, red_chi_squared_OP, time_fit, flux_fit, f1_values_fit, f2_values_fit, peak_time, amount_fit, f"{survey}/one_peak/Best_fit_{SN_id}_OP")
+
+                    return
 
                 flux = original_flux
 
@@ -1036,7 +1102,7 @@ def fit_light_curve(SN_id, survey):
 if __name__ == '__main__':
     
     survey = "ZTF"
-    for SN_id in ztf_names_sn_IIn:
+    for SN_id in ztf_names_sn_IIn[83:84]:
         
         fit_light_curve(SN_id, survey)
 
