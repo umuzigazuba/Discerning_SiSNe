@@ -22,18 +22,32 @@ def retrieve_parameters(SN_names, survey):
 
     for SN_id in SN_names:
 
-        if os.path.isfile(f"Data/Analytical_parameters/{survey}/one_peak/{SN_id}_parameters_OP.npy"):
-            data = np.load(f"Data/Analytical_parameters/{survey}/one_peak/{SN_id}_parameters_OP.npy")
-            parameters_OP.append([SN_id, *data])
-
-        else:
+        if os.path.isfile(f"Data/Analytical_parameters/{survey}/two_peaks/{SN_id}_parameters_TP.npy"):
             data = np.load(f"Data/Analytical_parameters/{survey}/two_peaks/{SN_id}_parameters_TP.npy")
             parameters_TP.append([SN_id, *data])
+
+        else:
+            data = np.load(f"Data/Analytical_parameters/{survey}/one_peak/{SN_id}_parameters_OP.npy")
+            parameters_OP.append([SN_id, *data])
 
     parameters_OP = np.array(parameters_OP, dtype = object)
     parameters_TP = np.array(parameters_TP, dtype = object)
 
     return parameters_OP, parameters_TP
+
+def retrieve_parameters_one_peak(SN_names, survey):
+
+    parameters_OP = []
+
+    for SN_id in SN_names:
+
+        if os.path.isfile(f"Data/Analytical_parameters/{survey}/one_peak/{SN_id}_parameters_OP.npy"):
+            data = np.load(f"Data/Analytical_parameters/{survey}/one_peak/{SN_id}_parameters_OP.npy")
+            parameters_OP.append([SN_id, *data])
+
+    parameters_OP = np.array(parameters_OP, dtype = object)
+
+    return parameters_OP
 
 # %%
 
@@ -389,7 +403,7 @@ def calculate_peak_absolute_magnitude(apparent_magnitude, redshift):
 
 if __name__ == '__main__':
     
-    survey = "ZTF"
+    survey = "ATLAS"
 
     if survey == "ZTF":
         f1 = "r"
@@ -422,14 +436,8 @@ if __name__ == '__main__':
     # Remove light curves with reduced chi squared larger than the 95th percentile
     cut_light_curves = np.where(red_chi_squared_values[:, 1] > percentile_95)
 
-    print(len(cut_light_curves[0]))
-    print(len(red_chi_squared_values) - len(cut_light_curves[0]))
-
     cut_light_curves_Ia = np.where(np.isin(SN_names_Ia, red_chi_squared_values[cut_light_curves, 0][0]))[0]
     cut_light_curves_II = np.where(np.isin(SN_names_II, red_chi_squared_values[cut_light_curves, 0][0]))[0]
-
-    print(len(cut_light_curves_Ia))
-    print(len(cut_light_curves_II))
 
     SN_names_Ia = np.delete(SN_names_Ia, cut_light_curves_Ia)
     SN_names_II = np.delete(SN_names_II, cut_light_curves_II)
@@ -447,11 +455,15 @@ if __name__ == '__main__':
 
     if len(fitting_parameters_TP_Ia) != 0:
         fitting_parameters_Ia = np.concatenate((np.concatenate((fitting_parameters_OP_Ia, np.zeros((len(fitting_parameters_OP_Ia), 6))), axis = 1), fitting_parameters_TP_Ia))
+    
     else:
         fitting_parameters_Ia = np.concatenate((fitting_parameters_OP_Ia, np.zeros((len(fitting_parameters_OP_Ia), 6))), axis = 1)
+    
     fitting_parameters_II = np.concatenate((np.concatenate((fitting_parameters_OP_II, np.zeros((len(fitting_parameters_OP_II), 6))), axis = 1), fitting_parameters_TP_II))
     fitting_parameters = np.concatenate((fitting_parameters_Ia, fitting_parameters_II))
     
+    fitting_parameters_one_peak = retrieve_parameters_one_peak(fitting_parameters[:, 0], survey)
+
     number_of_peaks = np.concatenate((np.concatenate(([1] * len(fitting_parameters_OP_Ia), [2] * len(fitting_parameters_TP_Ia))), \
                                     np.concatenate(([1] * len(fitting_parameters_OP_II), [2] * len(fitting_parameters_TP_II)))))
     
@@ -470,15 +482,24 @@ if __name__ == '__main__':
 
     for idx in range(len(fitting_parameters_Ia)):
         
-        parameter_values = calculate_global_parameters(fitting_parameters_Ia[idx, 0], survey, number_of_peaks[idx], fitting_parameters_Ia[idx, 1:])
-        global_parameters_Ia.append(parameter_values)
+
+        try:
+            parameter_values = calculate_global_parameters(fitting_parameters_Ia[idx, 0], survey, number_of_peaks[idx], fitting_parameters_Ia[idx, 1:])
+            global_parameters_Ia.append(parameter_values)
+
+        except ValueError: 
+            print(fitting_parameters_Ia[idx, 0])
 
     global_parameters_Ia = np.array(global_parameters_Ia)
 
     for idx in range(len(fitting_parameters_II)):
     
-        parameter_values = calculate_global_parameters(fitting_parameters_II[idx, 0], survey, number_of_peaks[idx], fitting_parameters_II[idx, 1:])
-        global_parameters_II.append(parameter_values)
+        try:
+            parameter_values = calculate_global_parameters(fitting_parameters_II[idx, 0], survey, number_of_peaks[idx], fitting_parameters_II[idx, 1:])
+            global_parameters_II.append(parameter_values)
+
+        except:
+            print(fitting_parameters_II[idx, 0])
 
     global_parameters_II = np.array(global_parameters_II)
 
@@ -503,6 +524,7 @@ if __name__ == '__main__':
     # %%
 
     np.save(f"Data/Input_ML/{survey}/fitting_parameters.npy", fitting_parameters)
+    np.save(f"Data/Input_ML/{survey}/fitting_parameters_one_peak.npy", fitting_parameters_one_peak)
     np.save(f"Data/Input_ML/{survey}/global_parameters.npy", global_parameters)
     np.save(f"Data/Input_ML/{survey}/number_of_peaks.npy", number_of_peaks)
     np.save(f"Data/Input_ML/{survey}/SN_labels.npy", SN_labels)
