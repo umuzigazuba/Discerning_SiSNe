@@ -6,14 +6,9 @@ from astropy.coordinates import EarthLocation, SkyCoord, AltAz
 from dustmaps.sfd import SFDQuery
 from extinction import fm07, remove
 
-import fulu
-from sklearn.gaussian_process.kernels import (RBF, Matern, 
-      WhiteKernel, ConstantKernel as C)
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import os
 
 plt.rcParams["text.usetex"] = True
 
@@ -157,10 +152,8 @@ def ztf_load_data(ztf_name):
     fluxerr = ztf_data[:, 2]
     filters = ztf_data[:, 3]
 
-    extremes = np.load(f"Data/ZTF_forced_photometry_data/processed/{ztf_name}_extrema.npy")
-
     return np.array(time).astype(np.float32), np.array(flux).astype(np.float32), \
-           np.array(fluxerr).astype(np.float32), np.array(filters), np.array(extremes)
+           np.array(fluxerr).astype(np.float32), np.array(filters)
 
 # Plot data
 def ztf_plot_data(ztf_name, time, flux, fluxerr, filters, extrema, save_fig = False):
@@ -238,10 +231,8 @@ def atlas_load_data(atlas_name):
     fluxerr = atlas_data[:, 2]
     filters = atlas_data[:, 3]
 
-    extremes = np.load(f"Data/ATLAS_forced_photometry_data/processed/{atlas_name}_extrema.npy")
-
     return np.array(time).astype(np.float32), np.array(flux).astype(np.float32), \
-           np.array(fluxerr).astype(np.float32), np.array(filters), np.array(extremes)
+           np.array(fluxerr).astype(np.float32), np.array(filters)
 
 
 # Plot data
@@ -445,29 +436,47 @@ def ztf_data_processing(ztf_names, survey_information):
             filter_f1 = np.where(filters == f1)
             filter_f2 = np.where(filters == f2)
 
-            if len(filter_f1[0]) >= 5 and len(filter_f2[0]) >= 5:
+            if len(filter_f1[0]) != 0 and len(filter_f2[0]) != 0:
                 # Find extrema
                 SN_extrema = find_baseline(flux, filter_f1, filter_f2, 2)
                 SN_extrema = np.concatenate((SN_extrema["Extrema f1"], SN_extrema["Extrema f2"]))
 
-                # Save data
-                SN_data = np.column_stack((time, flux, fluxerr, filters))
-                np.save(f"Data/ZTF_forced_photometry_data/processed/{name}_data.npy", SN_data)
-                np.save(f"Data/ZTF_forced_photometry_data/processed/{name}_extrema.npy", SN_extrema)
+                time = np.concatenate((time[filter_f1][SN_extrema[0] : SN_extrema[1]], time[filter_f2][SN_extrema[2] : SN_extrema[3]]))
+                flux = np.concatenate((flux[filter_f1][SN_extrema[0] : SN_extrema[1]], flux[filter_f2][SN_extrema[2] : SN_extrema[3]]))
+                fluxerr = np.concatenate((fluxerr[filter_f1][SN_extrema[0] : SN_extrema[1]], fluxerr[filter_f2][SN_extrema[2] : SN_extrema[3]]))
+                filters = np.concatenate((filters[filter_f1][SN_extrema[0] : SN_extrema[1]], filters[filter_f2][SN_extrema[2] : SN_extrema[3]]))
 
-                # Save name to file 
-                if SN_type == "SN Ia-CSM":
-                    names_file = open("Data/ZTF_SNe_Ia_CSM.txt", "a")
-                    names_file.write(name + "\n")
-                    names_file.close()
-                
-                elif SN_type == "SN IIn":
-                    names_file = open("Data/ZTF_SNe_IIn.txt", "a")
-                    names_file.write(name + "\n")
-                    names_file.close()
+                # Delete datapoint 250 days before and 550 days after the peak and with a flux value below 15 microJansky
+                to_be_deleted = np.where((time < -250) | (time > 550) | (flux < 15))
 
-                # Save plot 
-                ztf_plot_data(name, time, flux, fluxerr, filters, SN_extrema, save_fig = True)
+                time = np.delete(time, to_be_deleted)
+                flux = np.delete(flux, to_be_deleted)
+                fluxerr = np.delete(fluxerr, to_be_deleted)
+                filters = np.delete(filters, to_be_deleted)
+
+                filter_f1 = np.where(filters == f1)
+                filter_f2 = np.where(filters == f2)
+
+                # We only consider light curves with data in both filters 
+                if len(filter_f1[0]) >= 5 and len(filter_f2[0]) >= 5:
+
+                    # Save data
+                    SN_data = np.column_stack((time, flux, fluxerr, filters))
+                    np.save(f"Data/ZTF_forced_photometry_data/processed/{name}_data.npy", SN_data)
+
+                    # Save name to file 
+                    if SN_type == "SN Ia-CSM":
+                        names_file = open("Data/ZTF_SNe_Ia_CSM.txt", "a")
+                        names_file.write(name + "\n")
+                        names_file.close()
+                    
+                    elif SN_type == "SN IIn":
+                        names_file = open("Data/ZTF_SNe_IIn.txt", "a")
+                        names_file.write(name + "\n")
+                        names_file.close()
+
+                    # Save plot 
+                    ztf_plot_data(name, time, flux, fluxerr, filters, SN_extrema, save_fig = True)
 
 def atlas_data_processing(atlas_names, survey_information):
 
@@ -535,76 +544,47 @@ def atlas_data_processing(atlas_names, survey_information):
             filter_f1 = np.where(filters == f1)
             filter_f2 = np.where(filters == f2)
 
-            if len(filter_f1[0]) >= 5 and len(filter_f2[0]) >= 5:
+            if len(filter_f1[0]) != 0 and len(filter_f2[0]) != 0:
                 # Find extrema
                 SN_extrema = find_baseline(flux, filter_f1, filter_f2, 2)
                 SN_extrema = np.concatenate((SN_extrema["Extrema f1"], SN_extrema["Extrema f2"]))
 
-                # Save data
-                SN_data = np.column_stack((time, flux, fluxerr, filters))
-                np.save(f"Data/ATLAS_forced_photometry_data/processed/{internal_name}_data.npy", SN_data)
-                np.save(f"Data/ATLAS_forced_photometry_data/processed/{internal_name}_extrema.npy", SN_extrema)
+                time = np.concatenate((time[filter_f1][SN_extrema[0] : SN_extrema[1]], time[filter_f2][SN_extrema[2] : SN_extrema[3]]))
+                flux = np.concatenate((flux[filter_f1][SN_extrema[0] : SN_extrema[1]], flux[filter_f2][SN_extrema[2] : SN_extrema[3]]))
+                fluxerr = np.concatenate((fluxerr[filter_f1][SN_extrema[0] : SN_extrema[1]], fluxerr[filter_f2][SN_extrema[2] : SN_extrema[3]]))
+                filters = np.concatenate((filters[filter_f1][SN_extrema[0] : SN_extrema[1]], filters[filter_f2][SN_extrema[2] : SN_extrema[3]]))
 
-                # Save name to file 
-                if SN_type == "SN Ia-CSM":
-                    names_file = open("Data/ATLAS_SNe_Ia_CSM.txt", "a")
-                    names_file.write(internal_name + "\n")
-                    names_file.close()
-                
-                elif SN_type == "SN IIn":
-                    names_file = open("Data/ATLAS_SNe_IIn.txt", "a")
-                    names_file.write(internal_name + "\n")
-                    names_file.close()
+                # Delete datapoint 250 days before and 550 days after the peak and with a flux value below 15 microJansky
+                to_be_deleted = np.where((time < -250) | (time > 550) | (flux < 15))
 
-                # Save plot 
-                atlas_plot_data(internal_name, time, flux, fluxerr, filters, SN_extrema, save_fig = True)
+                time = np.delete(time, to_be_deleted)
+                flux = np.delete(flux, to_be_deleted)
+                fluxerr = np.delete(fluxerr, to_be_deleted)
+                filters = np.delete(filters, to_be_deleted)
+
+                filter_f1 = np.where(filters == f1)
+                filter_f2 = np.where(filters == f2)
+
+                # We only consider light curves with data in both filters 
+                if len(filter_f1[0]) >= 5 and len(filter_f2[0]) >= 5:
+                    # Save data
+                    SN_data = np.column_stack((time, flux, fluxerr, filters))
+                    np.save(f"Data/ATLAS_forced_photometry_data/processed/{internal_name}_data.npy", SN_data)
+
+                    # Save name to file 
+                    if SN_type == "SN Ia-CSM":
+                        names_file = open("Data/ATLAS_SNe_Ia_CSM.txt", "a")
+                        names_file.write(internal_name + "\n")
+                        names_file.close()
+                    
+                    elif SN_type == "SN IIn":
+                        names_file = open("Data/ATLAS_SNe_IIn.txt", "a")
+                        names_file.write(internal_name + "\n")
+                        names_file.close()
+
+                    # Save plot 
+                    atlas_plot_data(internal_name, time, flux, fluxerr, filters, SN_extrema, save_fig = True)
             
-# %%
-
-### Light curve approximation ###
-
-def data_augmentation(survey, time, flux, fluxerr, filters, augmentation_type):
-
-    if survey == "ZTF":
-        passband2lam = {'r': np.log10(6366.38), 'g': np.log10(4746.48)}
-
-    elif survey == "ATLAS":
-        passband2lam = {'o': np.log10(6629.82), 'c': np.log10(5182.42)}
-    
-    else:
-        print("ERROR: the options for survey are \"ZTF\" and \"ATLAS\".")
-        return None
-    
-    passbands = filters
-    if augmentation_type == "GP":
-        augmentation = fulu.GaussianProcessesAugmentation(passband2lam, C(1.0)*Matern() * RBF([1, 1]) + Matern() + WhiteKernel())
-
-    elif augmentation_type == "MLP":
-        augmentation = fulu.MLPRegressionAugmentation(passband2lam)
-    
-    elif augmentation_type == "NF":
-        augmentation = fulu.NormalizingFlowAugmentation(passband2lam)
-    
-    elif augmentation_type == "BNN":
-        augmentation = fulu.BayesianNetAugmentation(passband2lam)
-    
-    else:
-        print("ERROR: the options for augmentation_type are \"GP\", \"MLP\", \"NF\"and \"BNN\".")
-        return None
-
-    augmentation.fit(time, flux, fluxerr, passbands)
-
-    return passbands, passband2lam, augmentation
-
-def plot_data_augmentation(SN_id, passbands, passband2lam, augmentation_type, time, flux,
-                           fluxerr, time_aug, flux_aug, flux_err_aug, passband_aug, ax): 
-
-    plot = fulu.LcPlotter(passband2lam)
-    plot.plot_one_graph_all(t = time, flux = flux, flux_err = fluxerr, passbands = passbands,
-                            t_approx = time_aug, flux_approx = flux_aug,
-                            flux_err_approx = flux_err_aug, passband_approx = passband_aug, ax = ax,
-                            title = f"Augmented light curve of SN {SN_id} using {augmentation_type}.")
-
 # %%
     
 if __name__ == '__main__':
