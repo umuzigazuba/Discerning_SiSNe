@@ -446,37 +446,47 @@ def ztf_data_processing(ztf_names, survey_information):
                 fluxerr = np.concatenate((fluxerr[filter_f1][SN_extrema[0] : SN_extrema[1]], fluxerr[filter_f2][SN_extrema[2] : SN_extrema[3]]))
                 filters = np.concatenate((filters[filter_f1][SN_extrema[0] : SN_extrema[1]], filters[filter_f2][SN_extrema[2] : SN_extrema[3]]))
 
-                # Delete datapoint 250 days before and 550 days after the peak and with a flux value below 15 microJansky
-                to_be_deleted = np.where((time < -250) | (time > 550) | (flux < 15))
-
-                time = np.delete(time, to_be_deleted)
-                flux = np.delete(flux, to_be_deleted)
-                fluxerr = np.delete(fluxerr, to_be_deleted)
-                filters = np.delete(filters, to_be_deleted)
-
                 filter_f1 = np.where(filters == f1)
-                filter_f2 = np.where(filters == f2)
 
-                # We only consider light curves with data in both filters 
-                if len(filter_f1[0]) >= 5 and len(filter_f2[0]) >= 5:
+                if len(filter_f1[0]) != 0:
+                    # Delete datapoint 250 days before and 550 days after the peak and with a flux value below 15 microJansky
+                    peak_main_idx = np.argmax(flux[filter_f1])
+                    peak_time = np.copy(time[peak_main_idx])
+                        
+                    time -= peak_time
 
-                    # Save data
-                    SN_data = np.column_stack((time, flux, fluxerr, filters))
-                    np.save(f"Data/ZTF_forced_photometry_data/processed/{name}_data.npy", SN_data)
+                    to_be_deleted = np.where((time < -250) | (time > 550) | (flux < 15))
 
-                    # Save name to file 
-                    if SN_type == "SN Ia-CSM":
-                        names_file = open("Data/ZTF_SNe_Ia_CSM.txt", "a")
-                        names_file.write(name + "\n")
-                        names_file.close()
+                    time = np.delete(time, to_be_deleted)
+                    flux = np.delete(flux, to_be_deleted)
+                    fluxerr = np.delete(fluxerr, to_be_deleted)
+                    filters = np.delete(filters, to_be_deleted)
+
+                    filter_f1 = np.where(filters == f1)
+                    filter_f2 = np.where(filters == f2)
                     
-                    elif SN_type == "SN IIn":
-                        names_file = open("Data/ZTF_SNe_IIn.txt", "a")
-                        names_file.write(name + "\n")
-                        names_file.close()
+                    time += peak_time
 
-                    # Save plot 
-                    ztf_plot_data(name, time, flux, fluxerr, filters, SN_extrema, save_fig = True)
+                    # We only consider light curves with data in both filters 
+                    if len(filter_f1[0]) >= 5 and len(filter_f2[0]) >= 5:
+
+                        # Save data
+                        SN_data = np.column_stack((time, flux, fluxerr, filters))
+                        np.save(f"Data/ZTF_forced_photometry_data/processed/{name}_data.npy", SN_data)
+
+                        # Save name to file 
+                        if SN_type == "SN Ia-CSM":
+                            names_file = open("Data/ZTF_SNe_Ia_CSM.txt", "a")
+                            names_file.write(name + "\n")
+                            names_file.close()
+                        
+                        elif SN_type == "SN IIn":
+                            names_file = open("Data/ZTF_SNe_IIn.txt", "a")
+                            names_file.write(name + "\n")
+                            names_file.close()
+
+                        # Save plot 
+                        ztf_plot_data(name, time, flux, fluxerr, filters, SN_extrema, save_fig = True)
 
 def atlas_data_processing(atlas_names, survey_information):
 
@@ -554,37 +564,47 @@ def atlas_data_processing(atlas_names, survey_information):
                 fluxerr = np.concatenate((fluxerr[filter_f1][SN_extrema[0] : SN_extrema[1]], fluxerr[filter_f2][SN_extrema[2] : SN_extrema[3]]))
                 filters = np.concatenate((filters[filter_f1][SN_extrema[0] : SN_extrema[1]], filters[filter_f2][SN_extrema[2] : SN_extrema[3]]))
 
-                # Delete datapoint 250 days before and 550 days after the peak and with a flux value below 15 microJansky
-                to_be_deleted = np.where((time < -250) | (time > 550) | (flux < 15))
-
-                time = np.delete(time, to_be_deleted)
-                flux = np.delete(flux, to_be_deleted)
-                fluxerr = np.delete(fluxerr, to_be_deleted)
-                filters = np.delete(filters, to_be_deleted)
-
                 filter_f1 = np.where(filters == f1)
-                filter_f2 = np.where(filters == f2)
 
-                # We only consider light curves with data in both filters 
-                if len(filter_f1[0]) >= 5 and len(filter_f2[0]) >= 5:
-                    # Save data
-                    SN_data = np.column_stack((time, flux, fluxerr, filters))
-                    np.save(f"Data/ATLAS_forced_photometry_data/processed/{internal_name}_data.npy", SN_data)
+                if len(filter_f1[0]) != 0:
+                    # Delete datapoint 250 days before and 550 days after the peak and with a flux value below 15 microJansky
+                    peak_main_idx = np.argmax(flux[filter_f1])
+                    peak_time = np.copy(time[peak_main_idx])
+                        
+                    time -= peak_time
 
-                    # Save name to file 
-                    if SN_type == "SN Ia-CSM":
-                        names_file = open("Data/ATLAS_SNe_Ia_CSM.txt", "a")
-                        names_file.write(internal_name + "\n")
-                        names_file.close()
+                    to_be_deleted = np.where((time < -250) | (time > 550) | (flux < 15))
+
+                    time = np.delete(time, to_be_deleted)
+                    flux = np.delete(flux, to_be_deleted)
+                    fluxerr = np.delete(fluxerr, to_be_deleted)
+                    filters = np.delete(filters, to_be_deleted)
+
+                    filter_f1 = np.where(filters == f1)
+                    filter_f2 = np.where(filters == f2)
                     
-                    elif SN_type == "SN IIn":
-                        names_file = open("Data/ATLAS_SNe_IIn.txt", "a")
-                        names_file.write(internal_name + "\n")
-                        names_file.close()
+                    time += peak_time
 
-                    # Save plot 
-                    atlas_plot_data(internal_name, time, flux, fluxerr, filters, SN_extrema, save_fig = True)
-            
+                    # We only consider light curves with data in both filters 
+                    if len(filter_f1[0]) >= 5 and len(filter_f2[0]) >= 5:
+                        # Save data
+                        SN_data = np.column_stack((time, flux, fluxerr, filters))
+                        np.save(f"Data/ATLAS_forced_photometry_data/processed/{internal_name}_data.npy", SN_data)
+
+                        # Save name to file 
+                        if SN_type == "SN Ia-CSM":
+                            names_file = open("Data/ATLAS_SNe_Ia_CSM.txt", "a")
+                            names_file.write(internal_name + "\n")
+                            names_file.close()
+                        
+                        elif SN_type == "SN IIn":
+                            names_file = open("Data/ATLAS_SNe_IIn.txt", "a")
+                            names_file.write(internal_name + "\n")
+                            names_file.close()
+
+                        # Save plot 
+                        atlas_plot_data(internal_name, time, flux, fluxerr, filters, SN_extrema, save_fig = True)
+                
 # %%
     
 if __name__ == '__main__':
