@@ -1,13 +1,11 @@
-ZTF24abeivan
 ZTF24aatjphv
 ZTF24aamiomv
 ZTF24aaleeji
 ZTF24aaisnlp
 ZTF24aaifila
-ZTF24aagtesv
 ZTF24aafqxmg
 ZTF24aaerzgz
-ZTF24aaadler
+ZTF23absbzli
 ZTF23absdibx
 ZTF23abqimmw
 ZTF23abpznvm
@@ -35,7 +33,6 @@ ZTF23aafmjbx
 ZTF23aaecexq
 ZTF23aadtvmb
 ZTF23aaavyag
-ZTF23aablgzj
 ZTF23aaabzea
 ZTF23aaarwbd
 ZTF22abtsypf
@@ -67,7 +64,6 @@ ZTF22aahedwz
 ZTF22aagvtzz
 ZTF22aaetqzk
 ZTF21acmfxkc
-ZTF21aclknsx
 ZTF21achducl
 ZTF21achfddh
 ZTF21acdqdge
@@ -87,7 +83,6 @@ ZTF21abiwpjm
 ZTF21abhqqfa
 ZTF21abhibro
 ZTF21abgjldn
-ZTF21abgzyvg
 ZTF21abghumo
 ZTF21abebgfr
 ZTF21abccdld
@@ -97,7 +92,6 @@ ZTF21aaydxoo
 ZTF21aaxtije
 ZTF21aavuqzr
 ZTF21aanuxvd
-ZTF21aauaaxv
 ZTF21aaradzm
 ZTF21aarcobt
 ZTF21aapvmcu
@@ -133,12 +127,9 @@ ZTF20aaswzdm
 ZTF20aartnkv
 ZTF20aaivhra
 ZTF20aammbvq
-ZTF20aaocklb
 ZTF20aahapgw
-ZTF20aamrreb
 ZTF20aajvyja
 ZTF20aadyyvk
-ZTF20aafegdf
 ZTF20aadtarr
 ZTF20aadxrvb
 ZTF20aaaddgy
