@@ -1172,7 +1172,5 @@ if __name__ == '__main__':
     for SN_id in atlas_names:
 
         fit_light_curve(SN_id, survey)
-
- # %%
-np.where(atlas_names == SN_id)
+        
 # %%
