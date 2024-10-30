@@ -230,22 +230,14 @@ def calculate_global_parameters(SN_id, survey, peak_number, parameter_values):
         f1 = "r"
         f2 = "g"
 
-        time, flux, _, filters, boundaries = ztf_load_data(SN_id)
+        time, flux, _, filters = ztf_load_data(SN_id)
 
     if survey == "ATLAS":
         f1 = "o"
         f2 = "c"
 
         # Load the data
-        time, flux, _, filters, boundaries = atlas_load_data(SN_id)
-
-    filter_f1 = np.where(filters == f1) 
-    filter_f2 = np.where(filters == f2)
-
-    # Only consider data belonging to the supernova explosion
-    time = np.concatenate((time[filter_f1][boundaries[0] : boundaries[1]], time[filter_f2][boundaries[2] : boundaries[3]]))
-    flux = np.concatenate((flux[filter_f1][boundaries[0] : boundaries[1]], flux[filter_f2][boundaries[2] : boundaries[3]]))
-    filters = np.concatenate((filters[filter_f1][boundaries[0] : boundaries[1]], filters[filter_f2][boundaries[2] : boundaries[3]]))
+        time, flux, _, filters = atlas_load_data(SN_id)
 
     f1_values = np.where(filters == f1)
 
@@ -488,7 +480,17 @@ if __name__ == '__main__':
             global_parameters_Ia.append(parameter_values)
 
         except ValueError: 
-            print(fitting_parameters_Ia[idx, 0])
+            # Remove light curve from list because it cannot be fit
+            file_name = f"Data/{survey}_SNe_Ia_CSM.txt"
+                
+            with open(file_name, "r") as file:             
+                SN_names = file.readlines()
+
+            with open(file_name, "w") as file:
+                for name in SN_names:
+
+                    if name.strip("\n") != fitting_parameters_Ia[idx, 0]:
+                        file.write(name)
 
     global_parameters_Ia = np.array(global_parameters_Ia)
 
@@ -499,7 +501,17 @@ if __name__ == '__main__':
             global_parameters_II.append(parameter_values)
 
         except:
-            print(fitting_parameters_II[idx, 0])
+            # Remove light curve from list because it cannot be fit
+            file_name = f"Data/{survey}_SNe_IIn.txt"
+                
+            with open(file_name, "r") as file:             
+                SN_names = file.readlines()
+
+            with open(file_name, "w") as file:
+                for name in SN_names:
+
+                    if name.strip("\n") != fitting_parameters_II[idx, 0]:
+                        file.write(name)
 
     global_parameters_II = np.array(global_parameters_II)
 
@@ -508,12 +520,12 @@ if __name__ == '__main__':
     global_names = ["Peak magnitude", "Rise time [days]", "$\mathrm{m_{peak - 10d} - m_{peak}}$", "$\mathrm{m_{peak + 15d} - m_{peak}}$", \
                     "$\mathrm{m_{peak + 30d} - m_{peak}}$", "Duration above 50 \% of peak [days]", "Duration above 20 \% of peak [days]"]
     
-    redshifts = retrieve_redshift(fitting_parameters[:, 0], survey)
+    # redshifts = retrieve_redshift(fitting_parameters[:, 0], survey)
     
-    peak_abs_magnitude = []
-    for idx in range(len(redshifts)):
+    # peak_abs_magnitude = []
+    # for idx in range(len(redshifts)):
 
-        peak_abs_magnitude.append(calculate_peak_absolute_magnitude(global_parameters[idx, 0], redshifts[idx]))
+    #     peak_abs_magnitude.append(calculate_peak_absolute_magnitude(global_parameters[idx, 0], redshifts[idx]))
 
     # plot_correlation(global_parameters_Ia[:, 0:7], global_parameters_II[:, 0:7], survey, f1, global_names)
     # plot_correlation(global_parameters_Ia[:, 7:15], global_parameters_II[:, 7:15], survey, f2, global_names)

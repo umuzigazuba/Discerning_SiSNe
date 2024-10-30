@@ -986,7 +986,7 @@ def fit_light_curve(SN_id, survey):
             with open(file_name, "r") as file:             
                 SN_names = file.readlines()
 
-            with open(f"Data/{survey}_SNe_Ia_CSM.txt", "w") as file:
+            with open(file_name, "w") as file:
                 for name in SN_names:
 
                     if name.strip("\n") != SN_id:
@@ -1172,5 +1172,5 @@ if __name__ == '__main__':
     for SN_id in atlas_names:
 
         fit_light_curve(SN_id, survey)
-        
+
 # %%
