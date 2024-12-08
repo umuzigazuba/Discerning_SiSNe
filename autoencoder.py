@@ -18,7 +18,7 @@ plt.rcParams["text.usetex"] = True
 
 # Colourblind-friendly colours from https://personal.sron.nl/~pault/. 
 # Tested using https://davidmathlogic.com/colorblind/
-colours = {"blue":"#0077BB", "orange": "EE7733", "green":"#009988", "purple":"#AA3377", "brown": "65301A", "cyan": "33BBEE", "red":"#CC3311"}
+colours = {"blue":"#0077BB", "orange": "#EE7733", "green":"#296529", "purple":"#AA3377", "brown": "#65301A", "cyan": "#33BBEE", "red":"#CC3311"}
 
 # %%
 

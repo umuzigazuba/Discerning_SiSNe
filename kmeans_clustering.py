@@ -18,7 +18,7 @@ plt.rcParams['axes.axisbelow'] = True
 
 # Colourblind-friendly colours from https://personal.sron.nl/~pault/. 
 # Tested using https://davidmathlogic.com/colorblind/
-colours = {"blue":"#0077BB", "orange": "EE7733", "green":"#009988", "purple":"#AA3377", "brown": "65301A", "cyan": "33BBEE", "red":"#CC3311"}
+colours = {"blue":"#0077BB", "orange": "#EE7733", "green":"#296529", "purple":"#AA3377", "brown": "#65301A", "cyan": "#33BBEE", "red":"#CC3311"}
 
 # %%
 
@@ -52,7 +52,7 @@ def plot_PCA(parameter_values, SN_type, parameter_names):
     for i, lbl in enumerate(unique_labels):
 
         class_data = pca_df[pca_df["SN_type"] == lbl]
-        plt.scatter(class_data["Dimension 1"], class_data["Dimension 2"], c = colours[i], label = lbl)
+        plt.scatter(class_data["Dimension 1"], class_data["Dimension 2"], c = list(colours.values())[i], label = lbl)
 
     plt.title(f"PCA plot")
     plt.xlabel("Principal Component 1")
@@ -89,12 +89,12 @@ def plot_PCA_with_clusters(parameter_values, SN_type, kmeans, best_number, numbe
     unique_labels = np.unique(SN_type)
 
     # Create proxy artists for the background clusters
-    cluster_colors = colours[2:]
-    clusters = [mpatches.Patch(color = cluster_colors[idx], label = f"K-means cluster {idx + 1}") for idx in range(best_number)]
+    cluster_colours = {"green":"#296529", "purple":"#AA3377", "brown": "#65301A", "cyan": "#33BBEE"}
+    clusters = [mpatches.Patch(color = list(cluster_colours.values())[idx], label = f"K-means cluster {idx + 1}") for idx in range(best_number)]
 
     # Plot the background regions (colored by KMeans predictions)
     plt.figure(figsize = (8, 6))
-    plt.contourf(xx, yy, grid_clusters, levels = [-0.5, 0.5, 1.5, 2.5, 3.5], colors = cluster_colors, alpha = 0.3)
+    plt.contourf(xx, yy, grid_clusters, levels = [-0.5, 0.5, 1.5, 2.5, 3.5], colors = list(cluster_colours.values()), alpha = 0.3)
 
     for i, lbl in enumerate(unique_labels):
         # Filter the data for the current label
@@ -107,12 +107,12 @@ def plot_PCA_with_clusters(parameter_values, SN_type, kmeans, best_number, numbe
         # Plot one-peak supernovae (circles)
         if len(one_peak_data) != 0:
             plt.scatter(one_peak_data["Dimension 1"], one_peak_data["Dimension 2"], s = 65,
-                        c = colours[i], marker = 'o', label = f'{lbl} (one peak)', edgecolor = 'k')
+                        c = list(colours.values())[i], marker = 'o', label = f'{lbl} (one peak)', edgecolor = 'k')
 
         # Plot two-peak supernovae (triangles)
         if len(two_peak_data) != 0:
             plt.scatter(two_peak_data["Dimension 1"], two_peak_data["Dimension 2"], s = 65,
-                        c = colours[i], marker = '^', label = f'{lbl} (two peaks)', edgecolor = 'k')
+                        c = list(colours.values())[i], marker = '^', label = f'{lbl} (two peaks)', edgecolor = 'k')
 
     # Labels and legend
     plt.xlabel("Principal Component 1")
@@ -231,7 +231,7 @@ def number_of_clusters(parameters, save_fig = False):
             best_score = ss
 
     # plotting silhouette score
-    plt.bar(range(len(silhouette_scores)), list(silhouette_scores), align = "center", color = colours["purple"], width = 0.5)
+    plt.bar(range(len(silhouette_scores)), list(silhouette_scores), align = "center", color = colours["blue"], width = 0.5)
     plt.xticks(range(len(silhouette_scores)), list(n_clusters))
     plt.xlabel("Number of clusters")
     plt.ylabel("Silhouette score")
@@ -480,21 +480,23 @@ if __name__ == '__main__':
     # plot_PCA_with_clusters(combination_parameters_scaled, SN_labels[one_peak], kmeans, best_number, number_of_peaks[one_peak])
 
     # %%
+    list(colours.values())
+    # %%
 
     #### low dimension + fitting parameters
 
     fitting_parameters_scaled = scaler.fit_transform(fitting_parameters[:, 1:])
 
-    new_dimensions = loss_of_information(fitting_parameters_scaled, 50, f"{survey}_fit_parameters_in_the_PC_space")
+    new_dimensions = loss_of_information(fitting_parameters_scaled, 50) #, f"{survey}_fit_parameters_in_the_PC_space")
     print("best number of dimensions", new_dimensions)
     low_dimension_fitting_parameters = dimensionality_reduction(fitting_parameters_scaled, new_dimensions)
 
-    best_number = number_of_clusters(low_dimension_fitting_parameters, f"{survey}_fit_parameters_in_the_PC_space")
+    best_number = number_of_clusters(low_dimension_fitting_parameters) #, f"{survey}_fit_parameters_in_the_PC_space")
 
     kmeans = KMeans(n_clusters = best_number, random_state = 2804)
     kmeans.fit(low_dimension_fitting_parameters)
 
-    plot_PCA_with_clusters(low_dimension_fitting_parameters, SN_labels, kmeans, best_number, number_of_peaks, f"{survey}_fit_parameters_in_the_PC_space")
+    plot_PCA_with_clusters(low_dimension_fitting_parameters, SN_labels, kmeans, best_number, number_of_peaks) #, f"{survey}_fit_parameters_in_the_PC_space")
 
     # %%
 
@@ -565,18 +567,18 @@ if __name__ == '__main__':
 
     combination_parameters_scaled = scaler.fit_transform(combination_parameters)
 
-    new_dimensions = loss_of_information(combination_parameters_scaled, 50, f"{survey}_combined_dataset_in_the_PC_space")
+    new_dimensions = loss_of_information(combination_parameters_scaled, 50) # , f"{survey}_combined_dataset_in_the_PC_space")
     print("best number of dimensions", new_dimensions)
     low_dimension_combination_parameters = dimensionality_reduction(combination_parameters_scaled, new_dimensions)
 
-    best_number = number_of_clusters(low_dimension_combination_parameters, f"{survey}_combined_dataset_in_the_PC_space")
+    best_number = number_of_clusters(low_dimension_combination_parameters) # , f"{survey}_combined_dataset_in_the_PC_space")
 
     kmeans = KMeans(n_clusters = best_number, random_state = 2804)
     kmeans.fit(low_dimension_combination_parameters)
 
     print(len(np.where(kmeans.labels_ == 2)[0]))
 
-    plot_PCA_with_clusters(low_dimension_combination_parameters, SN_labels, kmeans, best_number, number_of_peaks, f"{survey}_combined_dataset_in_the_PC_space")
+    plot_PCA_with_clusters(low_dimension_combination_parameters, SN_labels, kmeans, best_number, number_of_peaks) # , f"{survey}_combined_dataset_in_the_PC_space")
 
     # %%
 
