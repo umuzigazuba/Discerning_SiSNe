@@ -449,7 +449,7 @@ plt.ylabel("Normalized flux", fontsize = 13)
 plt.title(f"Normalized {survey} r-band light curves.")
 plt.grid(alpha = 0.3) 
 plt.legend()
-plt.savefig(f"Presentation/light_curve_template_{survey}_combined_dataset_in_the_latent_space", dpi = 300, bbox_inches = "tight")
+plt.savefig(f"Plots/Results/light_curve_template_{survey}_combined_dataset_in_the_latent_space", dpi = 300, bbox_inches = "tight")
 plt.show()
 # %%
 

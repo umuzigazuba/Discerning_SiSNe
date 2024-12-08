@@ -121,7 +121,7 @@ def plot_PCA_with_clusters(parameter_values, SN_type, kmeans, best_number, numbe
     if type(save_fig) == str:
         name = save_fig.replace("_", " ")
         plt.title(f"K-means clusters of the {name}.")
-        plt.savefig(f"Presentation/PCA_plot_{save_fig}", dpi = 300, bbox_inches = "tight")
+        plt.savefig(f"Plots/Results/PCA_plot_{save_fig}", dpi = 300, bbox_inches = "tight")
         plt.show()
 
     else:
@@ -237,7 +237,7 @@ def number_of_clusters(parameters, save_fig = False):
         name = save_fig.replace("_", " ")
         plt.title(f"Silhouette score of the {name}.")
         plt.grid(alpha = 0.3)
-        plt.savefig(f"Presentation/silhouette_score_{save_fig}", dpi = 300, bbox_inches = "tight")
+        plt.savefig(f"Plots/Results/silhouette_score_{save_fig}", dpi = 300, bbox_inches = "tight")
         plt.show()
 
     else:
@@ -269,7 +269,7 @@ def loss_of_information(parameter_values, percentage = 75, save_fig = False):
         name = save_fig.replace("_", " ")
         plt.title(f"Cumulative variance of the {name}.")
         plt.grid(alpha = 0.3)
-        plt.savefig(f"Presentation/cummulative_variance_{save_fig}", dpi = 300, bbox_inches = "tight")
+        plt.savefig(f"Plots/Results/cummulative_variance_{save_fig}", dpi = 300, bbox_inches = "tight")
         plt.show()
 
     else:
@@ -644,7 +644,7 @@ if __name__ == '__main__':
     plt.title(f"Normalized {survey} r-band light curves.")
     plt.grid(alpha = 0.3) 
     plt.legend()
-    # plt.savefig(f"Presentation/light_curve_template_{survey}_combined_dataset_in_the_PC_space", dpi = 300, bbox_inches = "tight")
+    # plt.savefig(f"Plots/Results/light_curve_template_{survey}_combined_dataset_in_the_PC_space", dpi = 300, bbox_inches = "tight")
     plt.show()
 
     # %%

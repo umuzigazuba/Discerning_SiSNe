@@ -137,7 +137,7 @@ def plot_red_chi_squared(red_chi_squared_Ia, red_chi_squared_II, percentile_95, 
     plt.xscale("log")
     plt.grid(alpha = 0.3)
     plt.legend()
-    plt.savefig(f"Presentation/red_chi_squared_{survey}.png", dpi = 300, bbox_inches = "tight")
+    plt.savefig(f"Plots/Results/red_chi_squared_{survey}.png", dpi = 300, bbox_inches = "tight")
     plt.show()
 
 # %%
