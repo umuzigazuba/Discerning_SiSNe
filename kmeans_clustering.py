@@ -230,6 +230,8 @@ def number_of_clusters(parameters, save_fig = False):
         if ss > best_score:
             best_score = ss
 
+    mask = np.where(silhouette_scores == best_score)
+
     # plotting silhouette score
     plt.bar(range(len(silhouette_scores)), list(silhouette_scores), align = "center", color = colours["blue"], width = 0.5)
     plt.xticks(range(len(silhouette_scores)), list(n_clusters))
@@ -238,16 +240,15 @@ def number_of_clusters(parameters, save_fig = False):
     if type(save_fig) == str:
         name = save_fig.replace("_", " ")
         plt.title(f"Silhouette score of the {name}.")
-        plt.grid(alpha = 0.3)
+        plt.grid(alpha = 0.5)
         plt.savefig(f"Plots/Results/silhouette_score_{save_fig}", dpi = 300, bbox_inches = "tight")
         plt.show()
 
     else:
-        plt.title(f"Silhouette score.")
-        plt.grid(alpha = 0.3)
+        plt.title(f"Silhouette score. Best number of clusters = {n_clusters[mask][0]}. Score = {round(best_score, 2)}.")
+        plt.grid(alpha = 0.5)
         plt.show()
 
-    mask = np.where(silhouette_scores == best_score)
     return n_clusters[mask][0]
 
 def loss_of_information(parameter_values, percentage = 75, save_fig = False):
