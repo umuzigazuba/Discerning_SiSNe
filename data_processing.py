@@ -15,6 +15,10 @@ import pandas as pd
 
 plt.rcParams["text.usetex"] = True
 
+# Colourblind-friendly colours from https://personal.sron.nl/~pault/. 
+# Tested using https://davidmathlogic.com/colorblind/
+colours = {"blue":"#0077BB", "orange": "EE7733", "green":"#009988", "purple":"#AA3377", "brown": "65301A", "cyan": "33BBEE", "red":"#CC3311"}
+
 # %%
 
 ### ZTF ###
@@ -172,8 +176,8 @@ def ztf_plot_data(ztf_name, time, flux, fluxerr, filters, extrema, save_fig = Fa
         time_first_detection = time[g_values][extrema[2]]
         time -= time_first_detection
     
-    plt.errorbar(time[r_values], flux[r_values], yerr = fluxerr[r_values], fmt = "o", markersize = 4, capsize = 2, color = "tab:blue", label = "Band: r")
-    plt.errorbar(time[g_values], flux[g_values], yerr = fluxerr[g_values], fmt = "o", markersize = 4, capsize = 2, color = "tab:orange", label = "Band: g")
+    plt.errorbar(time[r_values], flux[r_values], yerr = fluxerr[r_values], fmt = "o", markersize = 4, capsize = 2, color = colours["blue"], label = "Band: r")
+    plt.errorbar(time[g_values], flux[g_values], yerr = fluxerr[g_values], fmt = "o", markersize = 4, capsize = 2, color = colours["orange"], label = "Band: g")
 
     plt.xlabel("Days since first detection", fontsize = 13)
     plt.ylabel("Flux $(\mu Jy)$", fontsize = 13)
@@ -252,8 +256,8 @@ def atlas_plot_data(atlas_name, time, flux, fluxerr, filters, extrema, save_fig 
         time_first_detection = time[c_values][extrema[2]]
         time -= time_first_detection
 
-    plt.errorbar(time[o_values], flux[o_values], yerr = fluxerr[o_values], fmt = "o", markersize = 4, capsize = 2, color = "tab:blue", label = "Band: o")
-    plt.errorbar(time[c_values], flux[c_values], yerr = fluxerr[c_values], fmt = "o", markersize = 4, capsize = 2, color = "tab:orange", label = "Band: c")
+    plt.errorbar(time[o_values], flux[o_values], yerr = fluxerr[o_values], fmt = "o", markersize = 4, capsize = 2, color = colours["blue"], label = "Band: o")
+    plt.errorbar(time[c_values], flux[c_values], yerr = fluxerr[c_values], fmt = "o", markersize = 4, capsize = 2, color = colours["orange"], label = "Band: c")
 
     plt.xlabel("Days since first detection", fontsize = 13)
     plt.ylabel("Flux $(\mu Jy)$", fontsize = 13)

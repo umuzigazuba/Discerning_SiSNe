@@ -11,6 +11,12 @@ import pandas as pd
 import os
 import csv
 
+plt.rcParams["text.usetex"] = True
+
+# Colourblind-friendly colours from https://personal.sron.nl/~pault/. 
+# Tested using https://davidmathlogic.com/colorblind/
+colours = {"blue":"#0077BB", "orange": "EE7733", "green":"#009988", "purple":"#AA3377", "brown": "65301A", "cyan": "33BBEE", "red":"#CC3311"}
+
 # %%
 
 # Retrieve parameters 
@@ -123,11 +129,11 @@ def plot_red_chi_squared(red_chi_squared_Ia, red_chi_squared_II, percentile_95, 
     max_bin = np.max(np.concatenate((red_chi_squared_Ia, red_chi_squared_II)))
     bins = np.logspace(np.log10(min_bin), np.log10(max_bin), 30)
 
-    plt.hist(red_chi_squared_Ia, bins = bins, linewidth = 2, color = "#F28E2B", histtype = "bar", alpha = 0.4, zorder = 10)
-    plt.hist(red_chi_squared_II, bins = bins, linewidth = 2, color = "#4E79A7", histtype = "bar", alpha = 0.4, zorder = 5)
+    plt.hist(red_chi_squared_Ia, bins = bins, linewidth = 2, color = colours["orange"], histtype = "bar", alpha = 0.4, zorder = 10)
+    plt.hist(red_chi_squared_II, bins = bins, linewidth = 2, color = colours["blue"], histtype = "bar", alpha = 0.4, zorder = 5)
 
-    plt.hist(red_chi_squared_Ia, bins = bins, linewidth = 2, color = "#F28E2B", histtype = "step",  fill = False, label = "SNe Ia-CSM", zorder = 10)
-    plt.hist(red_chi_squared_II, bins = bins, linewidth = 2, color = "#4E79A7", histtype = "step",  fill = False, label = "SNe IIn", zorder = 5)
+    plt.hist(red_chi_squared_Ia, bins = bins, linewidth = 2, color = colours["orange"], histtype = "step",  fill = False, label = "SNe Ia-CSM", zorder = 10)
+    plt.hist(red_chi_squared_II, bins = bins, linewidth = 2, color = colours["blue"], histtype = "step",  fill = False, label = "SNe IIn", zorder = 5)
 
     plt.axvline(x = percentile_95, color = "black", linestyle = "dashed", label = f"95th percentile = {percentile_95:.2f}")
 
@@ -147,8 +153,8 @@ def plot_correlation(parameter_values_Ia, parameter_values_II, survey, filter, p
     for idx_1 in range(len(parameters) - 1):
         for idx_2 in range(idx_1 + 1, len(parameters)): 
 
-            plt.scatter(parameter_values_Ia[:, idx_1], parameter_values_Ia[:, idx_2], c = "tab:orange", label = "SNe Ia-CSM", zorder = 10)
-            plt.scatter(parameter_values_II[:, idx_1], parameter_values_II[:, idx_2], c = "tab:blue", label = "SNe IIn", zorder = 5)
+            plt.scatter(parameter_values_Ia[:, idx_1], parameter_values_Ia[:, idx_2], c = colours["orange"], label = "SNe Ia-CSM", zorder = 10)
+            plt.scatter(parameter_values_II[:, idx_1], parameter_values_II[:, idx_2], c = colours["blue"], label = "SNe IIn", zorder = 5)
             
             plt.xlabel(parameters[idx_1], fontsize = 13)
             plt.ylabel(parameters[idx_2], fontsize = 13)
@@ -165,8 +171,8 @@ def plot_correlation_contour(parameter_values_Ia, parameter_values_II, survey, f
         for idx_2 in range(idx_1 + 1, len(parameters)): 
 
             sn.set_style("white")
-            sn.kdeplot(x = parameter_values_Ia[:, idx_1], y = parameter_values_Ia[:, idx_2], thresh = 0.3, color = "tab:orange", label = "SNe Ia-CSM", zorder = 10)
-            sn.kdeplot(x = parameter_values_II[:, idx_1], y = parameter_values_II[:, idx_2], thresh = 0.3, color = "tab:blue", label = "SNe IIn", zorder = 5)
+            sn.kdeplot(x = parameter_values_Ia[:, idx_1], y = parameter_values_Ia[:, idx_2], thresh = 0.3, color = colours["orange"], label = "SNe Ia-CSM", zorder = 10)
+            sn.kdeplot(x = parameter_values_II[:, idx_1], y = parameter_values_II[:, idx_2], thresh = 0.3, color = colours["blue"], label = "SNe IIn", zorder = 5)
 
             plt.xlabel(parameters[idx_1], fontsize = 13)
             plt.ylabel(parameters[idx_2], fontsize = 13)
@@ -185,11 +191,11 @@ def plot_distribution(parameter_values_Ia, parameter_values_II, survey, filter, 
         max_bin = np.max(np.concatenate((parameter_values_Ia[:, idx_1], parameter_values_II[:, idx_1])))
         bins = np.linspace(min_bin, max_bin, 25)
 
-        plt.hist(parameter_values_Ia[:, idx_1], bins = bins, linewidth = 2, color = "tab:orange", histtype = "bar", alpha = 0.4, zorder = 10)
-        plt.hist(parameter_values_II[:, idx_1], bins = bins, linewidth = 2, color = "tab:blue", histtype = "bar", alpha = 0.4, zorder = 5)
+        plt.hist(parameter_values_Ia[:, idx_1], bins = bins, linewidth = 2, color = colours["orange"], histtype = "bar", alpha = 0.4, zorder = 10)
+        plt.hist(parameter_values_II[:, idx_1], bins = bins, linewidth = 2, color = colours["blue"], histtype = "bar", alpha = 0.4, zorder = 5)
 
-        plt.hist(parameter_values_Ia[:, idx_1], bins = bins, linewidth = 2, color = "tab:orange", histtype = "step",  fill = False, label = "SNe Ia-CSM", zorder = 10)
-        plt.hist(parameter_values_II[:, idx_1], bins = bins, linewidth = 2, color = "tab:blue", histtype = "step", fill = False, label = "SNe IIn", zorder = 5)
+        plt.hist(parameter_values_Ia[:, idx_1], bins = bins, linewidth = 2, color = colours["orange"], histtype = "step",  fill = False, label = "SNe Ia-CSM", zorder = 10)
+        plt.hist(parameter_values_II[:, idx_1], bins = bins, linewidth = 2, color = colours["blue"], histtype = "step", fill = False, label = "SNe IIn", zorder = 5)
 
         plt.xlabel(parameters[idx_1], fontsize = 13)
         plt.ylabel("N", fontsize = 13)

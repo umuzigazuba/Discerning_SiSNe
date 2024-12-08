@@ -16,6 +16,10 @@ import pandas as pd
 plt.rcParams["text.usetex"] = True
 plt.rcParams['axes.axisbelow'] = True
 
+# Colourblind-friendly colours from https://personal.sron.nl/~pault/. 
+# Tested using https://davidmathlogic.com/colorblind/
+colours = {"blue":"#0077BB", "orange": "EE7733", "green":"#009988", "purple":"#AA3377", "brown": "65301A", "cyan": "33BBEE", "red":"#CC3311"}
+
 # %%
 
 # PCA
@@ -44,12 +48,11 @@ def plot_PCA(parameter_values, SN_type, parameter_names):
 
     plt.figure(figsize = (8, 6))
 
-    colors = ["tab:blue", "tab:orange", "tab:green", "tab:purple"]
     unique_labels = np.unique(SN_type)
     for i, lbl in enumerate(unique_labels):
 
         class_data = pca_df[pca_df["SN_type"] == lbl]
-        plt.scatter(class_data["Dimension 1"], class_data["Dimension 2"], c = colors[i], label = lbl)
+        plt.scatter(class_data["Dimension 1"], class_data["Dimension 2"], c = colours[i], label = lbl)
 
     plt.title(f"PCA plot")
     plt.xlabel("Principal Component 1")
@@ -83,11 +86,10 @@ def plot_PCA_with_clusters(parameter_values, SN_type, kmeans, best_number, numbe
     grid_clusters = kmeans.predict(grid_original)
     grid_clusters = grid_clusters.reshape(xx.shape)
 
-    colors = ["#4E79A7", "#F28E2B"]
     unique_labels = np.unique(SN_type)
 
     # Create proxy artists for the background clusters
-    cluster_colors = ["#59A14F", "#B07AA1", "#9C755F", "#76B7B2"]
+    cluster_colors = colours[2:]
     clusters = [mpatches.Patch(color = cluster_colors[idx], label = f"K-means cluster {idx + 1}") for idx in range(best_number)]
 
     # Plot the background regions (colored by KMeans predictions)
@@ -105,12 +107,12 @@ def plot_PCA_with_clusters(parameter_values, SN_type, kmeans, best_number, numbe
         # Plot one-peak supernovae (circles)
         if len(one_peak_data) != 0:
             plt.scatter(one_peak_data["Dimension 1"], one_peak_data["Dimension 2"], s = 65,
-                        c = colors[i], marker = 'o', label = f'{lbl} (one peak)', edgecolor = 'k')
+                        c = colours[i], marker = 'o', label = f'{lbl} (one peak)', edgecolor = 'k')
 
         # Plot two-peak supernovae (triangles)
         if len(two_peak_data) != 0:
             plt.scatter(two_peak_data["Dimension 1"], two_peak_data["Dimension 2"], s = 65,
-                        c = colors[i], marker = '^', label = f'{lbl} (two peaks)', edgecolor = 'k')
+                        c = colours[i], marker = '^', label = f'{lbl} (two peaks)', edgecolor = 'k')
 
     # Labels and legend
     plt.xlabel("Principal Component 1")
@@ -229,7 +231,7 @@ def number_of_clusters(parameters, save_fig = False):
             best_score = ss
 
     # plotting silhouette score
-    plt.bar(range(len(silhouette_scores)), list(silhouette_scores), align = "center", color = "#4E79A7", width = 0.5)
+    plt.bar(range(len(silhouette_scores)), list(silhouette_scores), align = "center", color = colours["purple"], width = 0.5)
     plt.xticks(range(len(silhouette_scores)), list(n_clusters))
     plt.xlabel("Number of clusters")
     plt.ylabel("Silhouette score")
@@ -260,7 +262,7 @@ def loss_of_information(parameter_values, percentage = 75, save_fig = False):
         pca.fit(parameter_values)
         cummulative_variance.append(np.sum(pca.explained_variance_ratio_))
 
-    plt.bar(range(len(cummulative_variance)), np.array(cummulative_variance) * 100, align = "center", color = "#4E79A7", width = 0.5)
+    plt.bar(range(len(cummulative_variance)), np.array(cummulative_variance) * 100, align = "center", color = colours["blue"], width = 0.5)
     plt.xticks(range(len(cummulative_variance)), list(possible_dimensions))
     plt.axhline(percentage, linestyle = "dashed", linewidth = 3, color = "black")
     plt.xlabel("Number of dimensions")
@@ -619,22 +621,22 @@ if __name__ == '__main__':
     # plt.plot(np.mean(np.array(collection_times_f2)[cluster_0], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_0], axis = 0), linewidth = 2, color = "#59A14F", label = "K-means cluster 1")
     # plt.fill_between(np.mean(np.array(collection_times_f2)[cluster_0], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_0], axis = 0) - np.std(np.array(collection_fluxes_f2)[cluster_0], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_0], axis = 0) + np.std(np.array(collection_fluxes_f2)[cluster_0], axis = 0), color = "tab:green", alpha = 0.15)
 
-    # plt.scatter(np.array(collection_times_f1)[cluster_3], np.array(collection_fluxes_f1)[cluster_3], s = 1, color = "tab:cyan", label = "K-means cluster 3")
+    # plt.scatter(np.array(collection_times_f1)[cluster_3], np.array(collection_fluxes_f1)[cluster_3], s = 1, color = colours["cyan"], label = "K-means cluster 3")
     # plt.legend()
     # plt.xlim([-200, 500])
     # plt.show()
 
-    # plt.scatter(np.array(collection_times_f1)[cluster_2], np.array(collection_fluxes_f1)[cluster_2], s = 1, color = "tab:brown", label = "K-means cluster 2")
+    # plt.scatter(np.array(collection_times_f1)[cluster_2], np.array(collection_fluxes_f1)[cluster_2], s = 1, color = colours["brown"], label = "K-means cluster 2")
     # plt.legend()
     # plt.xlim([-200, 500])
     # plt.show()
 
-    # plt.scatter(np.array(collection_times_f1)[cluster_1], np.array(collection_fluxes_f1)[cluster_1], s = 1, color = "tab:purple", label = "K-means cluster 1")
+    # plt.scatter(np.array(collection_times_f1)[cluster_1], np.array(collection_fluxes_f1)[cluster_1], s = 1, color = colours["purple"], label = "K-means cluster 1")
     # plt.legend()
     # plt.xlim([-200, 500])
     # plt.show()
 
-    plt.scatter(np.array(collection_times_f1)[cluster_0], np.array(collection_fluxes_f1)[cluster_0], s = 1, color = "tab:green", label = "K-means cluster 0")
+    plt.scatter(np.array(collection_times_f1)[cluster_0], np.array(collection_fluxes_f1)[cluster_0], s = 1, color = colours["green"], label = "K-means cluster 0")
     # plt.legend()
     # plt.xlim([-200, 500])
     # plt.show()

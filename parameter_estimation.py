@@ -19,6 +19,10 @@ from scipy.optimize import curve_fit
 
 plt.rcParams["text.usetex"] = True
 
+# Colourblind-friendly colours from https://personal.sron.nl/~pault/. 
+# Tested using https://davidmathlogic.com/colorblind/
+colours = {"blue":"#0077BB", "orange": "EE7733", "green":"#009988", "purple":"#AA3377", "brown": "65301A", "cyan": "33BBEE", "red":"#CC3311"}
+
 # %%
 
 # Load light curve data points 
@@ -479,20 +483,20 @@ def plot_extrema(time_aug, flux_aug, fluxerr_aug, f1_values_aug, f2_values_aug, 
     global time, flux, fluxerr, filters, f1_values, f2_values, f1, f2
 
     # the extrema
-    plt.scatter(time_aug[f1_values_aug][extrema_f1] + peak_time - sorted(time + peak_time)[1], flux_aug[f1_values_aug][extrema_f1], s = 250, marker = "*", c = "tab:green", edgecolors = "black", label = "Extrema r-band" , zorder = 10)
+    plt.scatter(time_aug[f1_values_aug][extrema_f1] + peak_time - sorted(time + peak_time)[1], flux_aug[f1_values_aug][extrema_f1], s = 250, marker = "*", c = colours["green"], edgecolors = "black", label = "Extrema r-band" , zorder = 10)
 
     # the original and augmented data
-    plt.fill_between(time_aug[f1_values_aug] + peak_time - sorted(time + peak_time)[1], flux_aug[f1_values_aug] - fluxerr_aug[f1_values_aug], flux_aug[f1_values_aug] + fluxerr_aug[f1_values_aug], color = "tab:blue", alpha = 0.1)
-    plt.errorbar(time[f1_values] + peak_time - sorted(time + peak_time)[1], flux[f1_values], yerr = fluxerr[f1_values], fmt = "o", markersize = 4, capsize = 2, alpha = 0.9, color = "tab:blue", label = "Band: r", zorder = 5)
-    plt.errorbar(time_aug[f1_values_aug] + peak_time - sorted(time + peak_time)[1], flux_aug[f1_values_aug], yerr = fluxerr_aug[f1_values_aug], fmt = "o", markersize = 4, capsize = 2, alpha = 0.1, color = "tab:blue", zorder = 5)
+    plt.fill_between(time_aug[f1_values_aug] + peak_time - sorted(time + peak_time)[1], flux_aug[f1_values_aug] - fluxerr_aug[f1_values_aug], flux_aug[f1_values_aug] + fluxerr_aug[f1_values_aug], color = colours["blue"], alpha = 0.1)
+    plt.errorbar(time[f1_values] + peak_time - sorted(time + peak_time)[1], flux[f1_values], yerr = fluxerr[f1_values], fmt = "o", markersize = 4, capsize = 2, alpha = 0.9, color = colours["blue"], label = "Band: r", zorder = 5)
+    plt.errorbar(time_aug[f1_values_aug] + peak_time - sorted(time + peak_time)[1], flux_aug[f1_values_aug], yerr = fluxerr_aug[f1_values_aug], fmt = "o", markersize = 4, capsize = 2, alpha = 0.1, color = colours["blue"], zorder = 5)
 
     # the extrema
-    plt.scatter(time_aug[f2_values_aug][extrema_f2] + peak_time - sorted(time + peak_time)[1], flux_aug[f2_values_aug][extrema_f2], s = 250, marker = "*", c = "tab:red", edgecolors = "black", label = "Extrema g-band", zorder = 10)
+    plt.scatter(time_aug[f2_values_aug][extrema_f2] + peak_time - sorted(time + peak_time)[1], flux_aug[f2_values_aug][extrema_f2], s = 250, marker = "*", c = colours["red"], edgecolors = "black", label = "Extrema g-band", zorder = 10)
 
     # the original and augmented data
-    plt.fill_between(time_aug[f2_values_aug] + peak_time - sorted(time + peak_time)[1], flux_aug[f2_values_aug] - fluxerr_aug[f2_values_aug], flux_aug[f2_values_aug] + fluxerr_aug[f2_values_aug], color = "tab:orange", alpha = 0.1)
-    plt.errorbar(time[f2_values] + peak_time - sorted(time + peak_time)[1], flux[f2_values], yerr = fluxerr[f2_values], fmt = "o", markersize = 4, capsize = 2, alpha = 0.9, color = "tab:orange", label = "Band: g", zorder = 5)
-    plt.errorbar(time_aug[f2_values_aug] + peak_time - sorted(time + peak_time)[1], flux_aug[f2_values_aug], yerr = fluxerr_aug[f2_values_aug], fmt = "o", markersize = 4, capsize = 2, alpha = 0.1, color = "tab:orange", zorder = 5)
+    plt.fill_between(time_aug[f2_values_aug] + peak_time - sorted(time + peak_time)[1], flux_aug[f2_values_aug] - fluxerr_aug[f2_values_aug], flux_aug[f2_values_aug] + fluxerr_aug[f2_values_aug], color = colours["orange"], alpha = 0.1)
+    plt.errorbar(time[f2_values] + peak_time - sorted(time + peak_time)[1], flux[f2_values], yerr = fluxerr[f2_values], fmt = "o", markersize = 4, capsize = 2, alpha = 0.9, color = colours["orange"], label = "Band: g", zorder = 5)
+    plt.errorbar(time_aug[f2_values_aug] + peak_time - sorted(time + peak_time)[1], flux_aug[f2_values_aug], yerr = fluxerr_aug[f2_values_aug], fmt = "o", markersize = 4, capsize = 2, alpha = 0.1, color = colours["orange"], zorder = 5)
 
     plt.xlabel("Modified Julian Date", fontsize = 13)
     plt.ylabel("Flux $(\mu Jy)$", fontsize = 13)
@@ -510,11 +514,11 @@ def plot_best_fit_light_curve(SN_id, red_chi_squared, time_fit, flux_fit, f1_val
 
     global time, flux, fluxerr, filters, f1_values, f2_values, f1, f2
 
-    plt.plot(time_fit[f1_values_fit] + peak_time - sorted(time + peak_time)[1], flux_fit[f1_values_fit], linestyle = "--", linewidth = 2, color = "tab:blue", label = f"Best-fitted light curve {f1}-band")
-    plt.errorbar(time[f1_values] + peak_time - sorted(time + peak_time)[1], flux[f1_values], yerr = fluxerr[f1_values], fmt = "o", markersize = 4, capsize = 2, color = "tab:blue", label = f"Band: {f1}", zorder = 5)
+    plt.plot(time_fit[f1_values_fit] + peak_time - sorted(time + peak_time)[1], flux_fit[f1_values_fit], linestyle = "--", linewidth = 2, color = colours["blue"], label = f"Best-fitted light curve {f1}-band")
+    plt.errorbar(time[f1_values] + peak_time - sorted(time + peak_time)[1], flux[f1_values], yerr = fluxerr[f1_values], fmt = "o", markersize = 4, capsize = 2, color = colours["blue"], label = f"Band: {f1}", zorder = 5)
 
-    plt.plot(time_fit[f2_values_fit] + peak_time - sorted(time + peak_time)[1], flux_fit[f2_values_fit], linestyle = "--", linewidth = 2, color = "tab:orange", label = f"Best-fitted light curve {f2}-band")                
-    plt.errorbar(time[f2_values] + peak_time - sorted(time + peak_time)[1], flux[f2_values], yerr = fluxerr[f2_values], fmt = "o", markersize = 4, capsize = 2, color = "tab:orange", label = f"Band: {f2}", zorder = 5)
+    plt.plot(time_fit[f2_values_fit] + peak_time - sorted(time + peak_time)[1], flux_fit[f2_values_fit], linestyle = "--", linewidth = 2, color = colours["orange"], label = f"Best-fitted light curve {f2}-band")                
+    plt.errorbar(time[f2_values] + peak_time - sorted(time + peak_time)[1], flux[f2_values], yerr = fluxerr[f2_values], fmt = "o", markersize = 4, capsize = 2, color = colours["orange"], label = f"Band: {f2}", zorder = 5)
 
     plt.xlabel("Time since first detection [Days]", fontsize = 13)
     plt.ylabel("Flux $(\mu Jy)$", fontsize = 13)
@@ -593,15 +597,15 @@ def plot_best_fit_light_curve_one_peak(SN_id, survey, red_chi_squared, time, flu
     
     if len(f1_values[0]) != 0:
         # Plot original data
-        plt.errorbar(time[f1_values], flux[f1_values], yerr = fluxerr[f1_values], fmt = "o", markersize = 4, capsize = 2, color = "tab:blue", label = f"Samples {f1}-band")
+        plt.errorbar(time[f1_values], flux[f1_values], yerr = fluxerr[f1_values], fmt = "o", markersize = 4, capsize = 2, color = colours["blue"], label = f"Samples {f1}-band")
         # Plot best fit
-        plt.plot(time_fit[:amount_fit], flux_fit[:amount_fit], linestyle = "--", linewidth = 2, alpha = 0.9, color = "tab:blue", label = f"Best-fitted light curve {f1}-band")
+        plt.plot(time_fit[:amount_fit], flux_fit[:amount_fit], linestyle = "--", linewidth = 2, alpha = 0.9, color = colours["blue"], label = f"Best-fitted light curve {f1}-band")
         
     if len(f2_values[0]) != 0:
         # Plot original data
-        plt.errorbar(time[f2_values], flux[f2_values], yerr = fluxerr[f2_values], fmt = "o", markersize = 4, capsize = 2, color = "tab:orange", label = f"Samples {f2}-band")
+        plt.errorbar(time[f2_values], flux[f2_values], yerr = fluxerr[f2_values], fmt = "o", markersize = 4, capsize = 2, color = colours["orange"], label = f"Samples {f2}-band")
         # Plot best fit
-        plt.plot(time_fit[amount_fit:], flux_fit[amount_fit:], linestyle = "--", linewidth = 2, alpha = 0.9, color = "tab:orange", label = f"Best-fitted light curve {f2}-band")
+        plt.plot(time_fit[amount_fit:], flux_fit[amount_fit:], linestyle = "--", linewidth = 2, alpha = 0.9, color = colours["orange"], label = f"Best-fitted light curve {f2}-band")
     
     # Plot posterior samples
     df = pd.read_csv(f"Data/Nested_sampling_parameters/{survey}/{SN_id}/one_peak/post_equal_weights.dat", delimiter = "\t")
@@ -615,8 +619,8 @@ def plot_best_fit_light_curve_one_peak(SN_id, survey, red_chi_squared, time, flu
 
         flux_fit = light_curve_one_peak(time_fit - time[peak_main_idx], float_list[:n_parameters_one_peak], flux[peak_main_idx], f1_values_fit, f2_values_fit)
         
-        plt.plot(time_fit[:amount_fit], flux_fit[:amount_fit], linewidth = 1, alpha = 0.2, color = "tab:blue")
-        plt.plot(time_fit[amount_fit:], flux_fit[amount_fit:], linewidth = 1, alpha = 0.2, color = "tab:orange")
+        plt.plot(time_fit[:amount_fit], flux_fit[:amount_fit], linewidth = 1, alpha = 0.2, color = colours["blue"])
+        plt.plot(time_fit[amount_fit:], flux_fit[amount_fit:], linewidth = 1, alpha = 0.2, color = colours["orange"])
 
     plt.xlabel("Modified Julian Date", fontsize = 13)
     plt.ylabel("Flux $(\mu Jy)$", fontsize = 13)
@@ -746,29 +750,29 @@ def plot_extrema_and_second_peak(SN_id, time_aug, flux_aug, fluxerr_aug, f1_valu
 
     if f1 in filters:
         # the extrema
-        # plt.scatter(time_aug[f1_values_aug][extrema_f1][::2] + peak_time, flux_aug[f1_values_aug][extrema_f1][::2], s = 250, marker = "*", c = "tab:green", edgecolors = "black", label = "Extrema r-band" , zorder = 10)
-        # plt.scatter(time_aug[f1_values_aug][extrema_f1][1] + peak_time, flux_aug[f1_values_aug][extrema_f1][1], s = 250, marker = "*", c = "tab:green", edgecolors = "black", zorder = 10)
+        # plt.scatter(time_aug[f1_values_aug][extrema_f1][::2] + peak_time, flux_aug[f1_values_aug][extrema_f1][::2], s = 250, marker = "*", c = colours["green"], edgecolors = "black", label = "Extrema r-band" , zorder = 10)
+        # plt.scatter(time_aug[f1_values_aug][extrema_f1][1] + peak_time, flux_aug[f1_values_aug][extrema_f1][1], s = 250, marker = "*", c = colours["green"], edgecolors = "black", zorder = 10)
 
         # the second peak
-        plt.plot(time_fit[f1_values_fit] + peak_time, flux_fit[f1_values_fit], color = "tab:blue")
+        plt.plot(time_fit[f1_values_fit] + peak_time, flux_fit[f1_values_fit], color = colours["blue"])
 
         # the original and augmented data
-        plt.fill_between(time_aug[f1_values_aug] + peak_time, flux_aug[f1_values_aug] - fluxerr_aug[f1_values_aug], flux_aug[f1_values_aug] + fluxerr_aug[f1_values_aug], color = "tab:blue", alpha = 0.1)
-        plt.errorbar(time[f1_values] + peak_time, flux[f1_values], yerr = fluxerr[f1_values], fmt = "o", markersize = 4, capsize = 2, alpha = 0.9, color = "tab:blue", label = "Band: r", zorder = 5)
-        plt.errorbar(time_aug[f1_values_aug] + peak_time, flux_aug[f1_values_aug], yerr = fluxerr_aug[f1_values_aug], fmt = "o", markersize = 4, capsize = 2, alpha = 0.1, color = "tab:blue", zorder = 5)
+        plt.fill_between(time_aug[f1_values_aug] + peak_time, flux_aug[f1_values_aug] - fluxerr_aug[f1_values_aug], flux_aug[f1_values_aug] + fluxerr_aug[f1_values_aug], color = colours["blue"], alpha = 0.1)
+        plt.errorbar(time[f1_values] + peak_time, flux[f1_values], yerr = fluxerr[f1_values], fmt = "o", markersize = 4, capsize = 2, alpha = 0.9, color = colours["blue"], label = "Band: r", zorder = 5)
+        plt.errorbar(time_aug[f1_values_aug] + peak_time, flux_aug[f1_values_aug], yerr = fluxerr_aug[f1_values_aug], fmt = "o", markersize = 4, capsize = 2, alpha = 0.1, color = colours["blue"], zorder = 5)
 
     if f2 in filters:
         # the extrema
-        # plt.scatter(time_aug[f2_values_aug][extrema_f2][::2] + peak_time, flux_aug[f2_values_aug][extrema_f2][::2], s = 250, marker = "*", c = "tab:red", edgecolors = "black", label = "Extrema g-band", zorder = 10)
-        # plt.scatter(time_aug[f2_values_aug][extrema_f2][1] + peak_time, flux_aug[f2_values_aug][extrema_f2][1], s = 250, marker = "*", c = "tab:red", edgecolors = "black", zorder = 10)
+        # plt.scatter(time_aug[f2_values_aug][extrema_f2][::2] + peak_time, flux_aug[f2_values_aug][extrema_f2][::2], s = 250, marker = "*", c = colours["red"], edgecolors = "black", label = "Extrema g-band", zorder = 10)
+        # plt.scatter(time_aug[f2_values_aug][extrema_f2][1] + peak_time, flux_aug[f2_values_aug][extrema_f2][1], s = 250, marker = "*", c = colours["red"], edgecolors = "black", zorder = 10)
 
         # the second peak
-        plt.plot(time_fit[f2_values_fit] + peak_time, flux_fit[f2_values_fit], color = "tab:orange")
+        plt.plot(time_fit[f2_values_fit] + peak_time, flux_fit[f2_values_fit], color = colours["orange"])
 
         # the original and augmented data
-        plt.fill_between(time_aug[f2_values_aug] + peak_time, flux_aug[f2_values_aug] - fluxerr_aug[f2_values_aug], flux_aug[f2_values_aug] + fluxerr_aug[f2_values_aug], color = "tab:orange", alpha = 0.1)
-        plt.errorbar(time[f2_values] + peak_time, flux[f2_values], yerr = fluxerr[f2_values], fmt = "o", markersize = 4, capsize = 2, alpha = 0.9, color = "tab:orange", label = "Band: g", zorder = 5)
-        plt.errorbar(time_aug[f2_values_aug] + peak_time, flux_aug[f2_values_aug], yerr = fluxerr_aug[f2_values_aug], fmt = "o", markersize = 4, capsize = 2, alpha = 0.1, color = "tab:orange", zorder = 5)
+        plt.fill_between(time_aug[f2_values_aug] + peak_time, flux_aug[f2_values_aug] - fluxerr_aug[f2_values_aug], flux_aug[f2_values_aug] + fluxerr_aug[f2_values_aug], color = colours["orange"], alpha = 0.1)
+        plt.errorbar(time[f2_values] + peak_time, flux[f2_values], yerr = fluxerr[f2_values], fmt = "o", markersize = 4, capsize = 2, alpha = 0.9, color = colours["orange"], label = "Band: g", zorder = 5)
+        plt.errorbar(time_aug[f2_values_aug] + peak_time, flux_aug[f2_values_aug], yerr = fluxerr_aug[f2_values_aug], fmt = "o", markersize = 4, capsize = 2, alpha = 0.1, color = colours["orange"], zorder = 5)
 
     plt.xlabel("Modified Julian Date", fontsize = 13)
     plt.ylabel("Flux $(\mu Jy)$", fontsize = 13)
