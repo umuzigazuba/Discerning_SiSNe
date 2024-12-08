@@ -1,6 +1,6 @@
 # %%
 
-from data_processing import ztf_load_data, atlas_load_data
+from data_processing import ztf_load_data, atlas_load_data, atlas_micro_flux_to_magnitude
 from parameter_estimation import light_curve_one_peak, light_curve_two_peaks
 
 from sklearn.preprocessing import StandardScaler
@@ -22,7 +22,7 @@ plt.rcParams['axes.axisbelow'] = True
 
 def plot_PCA(parameter_values, SN_type, parameter_names):
 
-    pca = decomposition.PCA(n_components = 2, random_state = 2211)
+    pca = decomposition.PCA(n_components = 2, random_state = 2804)
 
     pca_data = pca.fit_transform(parameter_values)
 
@@ -38,7 +38,7 @@ def plot_PCA(parameter_values, SN_type, parameter_names):
         print('\n\n', dataset_pca)
 
         print("\n*************** Most important features *************************")
-        print('As per PC 1:\n', (dataset_pca[dataset_pca > 0.3].iloc[0]).dropna())
+        print('As per PC 1:\n', (dataset_pca[dataset_pca > 0.25].iloc[0]).dropna())
         print('\n\nAs per PC 2:\n', (dataset_pca[dataset_pca > 0.3].iloc[1]).dropna())
         print("\n******************************************************************")
 
@@ -60,7 +60,7 @@ def plot_PCA(parameter_values, SN_type, parameter_names):
 
 def plot_PCA_with_clusters(parameter_values, SN_type, kmeans, best_number, number_of_peaks, save_fig = False):
 
-    pca = decomposition.PCA(n_components = 2, random_state = 2211)
+    pca = decomposition.PCA(n_components = 2, random_state = 2804)
     pca_data = pca.fit_transform(parameter_values)
 
     pca_df = pd.DataFrame(data = pca_data[:, :2], columns = ["Dimension 1", "Dimension 2"])
@@ -83,12 +83,12 @@ def plot_PCA_with_clusters(parameter_values, SN_type, kmeans, best_number, numbe
     grid_clusters = kmeans.predict(grid_original)
     grid_clusters = grid_clusters.reshape(xx.shape)
 
-    colors = ["tab:blue", "tab:orange"]
+    colors = ["#4E79A7", "#F28E2B"]
     unique_labels = np.unique(SN_type)
 
     # Create proxy artists for the background clusters
-    cluster_colors = ["tab:green", "tab:purple", "tab:brown", "tab:cyan"]
-    clusters = [mpatches.Patch(color = cluster_colors[idx], label = f"K-means cluster {idx}") for idx in range(best_number)]
+    cluster_colors = ["#59A14F", "#B07AA1", "#9C755F", "#76B7B2"]
+    clusters = [mpatches.Patch(color = cluster_colors[idx], label = f"K-means cluster {idx + 1}") for idx in range(best_number)]
 
     # Plot the background regions (colored by KMeans predictions)
     plt.figure(figsize = (8, 6))
@@ -130,7 +130,7 @@ def plot_PCA_with_clusters(parameter_values, SN_type, kmeans, best_number, numbe
   
 def dimensionality_reduction(parameter_values, new_dimensions):
 
-    pca = decomposition.PCA(n_components = new_dimensions, random_state = 2211)
+    pca = decomposition.PCA(n_components = new_dimensions, random_state = 2804)
 
     low_dimension_parameter_values = pca.fit_transform(parameter_values)
     # print("Cumulative variance explained by 2 principal components: {:.2%}".format(np.sum(pca.explained_variance_ratio_)))
@@ -153,22 +153,14 @@ def plot_SN_collection(survey, fitting_parameters, number_of_peaks):
             f1 = "r"
             f2 = "g"
 
-            time, flux, _, filters, boundaries = ztf_load_data(fitting_parameters[idx, 0])
+            time, flux, _, filters = ztf_load_data(fitting_parameters[idx, 0])
 
         if survey == "ATLAS":
             f1 = "o"
             f2 = "c"
 
             # Load the data
-            time, flux, _, filters, boundaries = atlas_load_data(fitting_parameters[idx, 0])
-
-        filter_f1 = np.where(filters == f1) 
-        filter_f2 = np.where(filters == f2)
-
-        # Only consider data belonging to the supernova explosion
-        time = np.concatenate((time[filter_f1][boundaries[0] : boundaries[1]], time[filter_f2][boundaries[2] : boundaries[3]]))
-        flux = np.concatenate((flux[filter_f1][boundaries[0] : boundaries[1]], flux[filter_f2][boundaries[2] : boundaries[3]]))
-        filters = np.concatenate((filters[filter_f1][boundaries[0] : boundaries[1]], filters[filter_f2][boundaries[2] : boundaries[3]]))
+            time, flux, _, filters = atlas_load_data(fitting_parameters[idx, 0])
 
         f1_values = np.where(filters == f1)
 
@@ -223,7 +215,7 @@ def number_of_clusters(parameters, save_fig = False):
     parameter_grid = ParameterGrid({"n_clusters": n_clusters})
     best_score = -1
 
-    kmeans_model = KMeans(random_state = 2211)
+    kmeans_model = KMeans(random_state = 2804)
 
     for p in parameter_grid:
         
@@ -237,15 +229,15 @@ def number_of_clusters(parameters, save_fig = False):
             best_score = ss
 
     # plotting silhouette score
-    plt.bar(range(len(silhouette_scores)), list(silhouette_scores), align = "center", color = "#722f59", width = 0.5)
+    plt.bar(range(len(silhouette_scores)), list(silhouette_scores), align = "center", color = "#4E79A7", width = 0.5)
     plt.xticks(range(len(silhouette_scores)), list(n_clusters))
     plt.xlabel("Number of clusters")
     plt.ylabel("Silhouette score")
     if type(save_fig) == str:
         name = save_fig.replace("_", " ")
         plt.title(f"Silhouette score of the {name}.")
-        plt.savefig(f"Presentation/silhouette_score_{save_fig}", dpi = 300, bbox_inches = "tight")
         plt.grid(alpha = 0.3)
+        plt.savefig(f"Presentation/silhouette_score_{save_fig}", dpi = 300, bbox_inches = "tight")
         plt.show()
 
     else:
@@ -264,11 +256,11 @@ def loss_of_information(parameter_values, percentage = 75, save_fig = False):
 
     for dimension in possible_dimensions:
 
-        pca = decomposition.PCA(n_components = dimension, random_state = 2211)
+        pca = decomposition.PCA(n_components = dimension, random_state = 2804)
         pca.fit(parameter_values)
         cummulative_variance.append(np.sum(pca.explained_variance_ratio_))
 
-    plt.bar(range(len(cummulative_variance)), np.array(cummulative_variance) * 100, align = "center", color = "#722f59", width = 0.5)
+    plt.bar(range(len(cummulative_variance)), np.array(cummulative_variance) * 100, align = "center", color = "#4E79A7", width = 0.5)
     plt.xticks(range(len(cummulative_variance)), list(possible_dimensions))
     plt.axhline(percentage, linestyle = "dashed", linewidth = 3, color = "black")
     plt.xlabel("Number of dimensions")
@@ -299,10 +291,10 @@ if __name__ == '__main__':
     fitting_parameters = np.load(f"Data/Input_ML/{survey}/fitting_parameters.npy", allow_pickle = True)
     fitting_parameters_one_peak = np.load(f"Data/Input_ML/{survey}/fitting_parameters_one_peak.npy", allow_pickle = True)
     global_parameters = np.load(f"Data/Input_ML/{survey}/global_parameters.npy")
+    global_parameters_one_peak = np.load(f"Data/Input_ML/{survey}/global_parameters_one_peak.npy")
     number_of_peaks = np.load(f"Data/Input_ML/{survey}/number_of_peaks.npy")
     SN_labels = np.load(f"Data/Input_ML/{survey}/SN_labels.npy")
     SN_labels_color = np.load(f"Data/Input_ML/{survey}/SN_labels_color.npy")
-    
     scaler = StandardScaler()
 
     # %%
@@ -317,7 +309,7 @@ if __name__ == '__main__':
     # # plot_PCA(fitting_parameters_scaled, SN_labels, fitting_parameters_names)
     # best_number = number_of_clusters(fitting_parameters_scaled)
 
-    # kmeans = KMeans(n_clusters = best_number, random_state = 2211)
+    # kmeans = KMeans(n_clusters = best_number, random_state = 2804)
     # kmeans.fit(fitting_parameters_scaled)
 
     # plot_PCA_with_clusters(fitting_parameters_scaled, SN_labels, kmeans, best_number, number_of_peaks)
@@ -349,8 +341,8 @@ if __name__ == '__main__':
 
     # plot_PCA_with_clusters(fitting_parameters_scaled, SN_labels, kmeans, number_of_peaks)
 
-    # %%
 
+    # %%
     #### model parameteres one and double peak
 
     parameters_two_peaks_names = ["A_f1", "t_0_f1", "t_rise_f1", "gamma_f1", "beta_f1", "t_fall_f1", "error_f1", \
@@ -363,30 +355,30 @@ if __name__ == '__main__':
     best_number = number_of_clusters(parameters_two_peaks_scaled)
     # best_number = 2
 
-    kmeans = KMeans(n_clusters = best_number, random_state = 2211)
+    kmeans = KMeans(n_clusters = best_number, random_state = 2804)
     kmeans.fit(parameters_two_peaks_scaled)
 
     plot_PCA_with_clusters(parameters_two_peaks_scaled, SN_labels, kmeans, best_number, number_of_peaks)
 
     # %%
 
-    #### model parameters only one peak
+    # #### model parameters only one peak
 
-    one_peak = np.where(number_of_peaks == 1)
+    # one_peak = np.where(number_of_peaks == 1)
 
-    parameters_two_peaks_names = ["A_f1", "t_0_f1", "t_rise_f1", "gamma_f1", "beta_f1", "t_fall_f1", "error_f1", \
-                                "A_f2", "t_0_f2", "t_rise_f2", "gamma_f2", "beta_f2", "t_fall_f2", "error_f2"] \
-                                + ["amp_f1", "mu_f1", "std_f1", "amp_f2", "mu_f2", "std_f2"]
+    # parameters_two_peaks_names = ["A_f1", "t_0_f1", "t_rise_f1", "gamma_f1", "beta_f1", "t_fall_f1", "error_f1", \
+    #                             "A_f2", "t_0_f2", "t_rise_f2", "gamma_f2", "beta_f2", "t_fall_f2", "error_f2"] \
+    #                             + ["amp_f1", "mu_f1", "std_f1", "amp_f2", "mu_f2", "std_f2"]
 
-    parameters_two_peaks_scaled = scaler.fit_transform(fitting_parameters[one_peak, 1:][0])
+    # parameters_two_peaks_scaled = scaler.fit_transform(fitting_parameters[one_peak, 1:][0])
 
-    plot_PCA(parameters_two_peaks_scaled, SN_labels[one_peak], parameters_two_peaks_names)
-    best_number = number_of_clusters(parameters_two_peaks_scaled)
+    # plot_PCA(parameters_two_peaks_scaled, SN_labels[one_peak], parameters_two_peaks_names)
+    # best_number = number_of_clusters(parameters_two_peaks_scaled)
 
-    kmeans = KMeans(n_clusters = best_number, random_state = 2211)
-    kmeans.fit(parameters_two_peaks_scaled)
+    # kmeans = KMeans(n_clusters = best_number, random_state = 2804)
+    # kmeans.fit(parameters_two_peaks_scaled)
 
-    plot_PCA_with_clusters(parameters_two_peaks_scaled, SN_labels[one_peak], kmeans, best_number, number_of_peaks[one_peak])
+    # plot_PCA_with_clusters(parameters_two_peaks_scaled, SN_labels[one_peak], kmeans, best_number, number_of_peaks[one_peak])
 
     # %%
 
@@ -401,12 +393,14 @@ if __name__ == '__main__':
     best_number = number_of_clusters(parameters_two_peaks_scaled)
     # best_number = 2
 
-    kmeans = KMeans(n_clusters = best_number, random_state = 2211)
+    kmeans = KMeans(n_clusters = best_number, random_state = 2804)
     kmeans.fit(parameters_two_peaks_scaled)
 
-    plot_PCA_with_clusters(parameters_two_peaks_scaled, SN_labels, kmeans, best_number, number_of_peaks)
+    plot_PCA_with_clusters(parameters_two_peaks_scaled, SN_labels, kmeans, best_number, [1] * len(number_of_peaks))
 
     # %%
+
+    # global parameters
 
     global_parameters_names = ["peak_mag_r", "rise_time_r", "mag_diff_10_r", "mag_diff_15_r", \
                             "mag_diff_30_r", "duration_50_r", "duration_20_r", \
@@ -420,69 +414,85 @@ if __name__ == '__main__':
     plot_PCA(global_parameters_scaled, SN_labels, global_parameters_names)
     best_number = number_of_clusters(global_parameters_scaled)
 
-    kmeans = KMeans(n_clusters = best_number, random_state = 2211)
+    kmeans = KMeans(n_clusters = best_number, random_state = 2804)
     kmeans.fit(global_parameters_scaled)
 
     plot_PCA_with_clusters(global_parameters_scaled, SN_labels, kmeans, best_number, number_of_peaks)
 
     # %%
 
-    # combine the two
+    # # combine the two
 
-    # one_peak = np.where(number_of_peaks == 1)
+    # # one_peak = np.where(number_of_peaks == 1)
 
-    combination_parameters_names = parameters_two_peaks_names + global_parameters_names
+    # combination_parameters_names = parameters_two_peaks_names + global_parameters_names
 
-    combination_parameters = np.hstack([fitting_parameters[:, 1:], global_parameters])
+    # combination_parameters = np.hstack([fitting_parameters[:, 1:], global_parameters])
+
+    # combination_parameters_scaled = scaler.fit_transform(combination_parameters)
+
+    # plot_PCA(combination_parameters_scaled, SN_labels, combination_parameters_names)
+    # best_number = number_of_clusters(combination_parameters_scaled)
+
+    # kmeans = KMeans(n_clusters = best_number, random_state = 2804)
+    # kmeans.fit(combination_parameters_scaled)
+
+    # plot_PCA_with_clusters(combination_parameters_scaled, SN_labels, kmeans, best_number, number_of_peaks)
+
+    # %%
+
+    # combine the two one-peak fit
+
+    combination_parameters_names = parameters_one_peak_names  + global_parameters_names
+
+    combination_parameters = np.hstack([fitting_parameters_one_peak[:, 1:], global_parameters_one_peak])
 
     combination_parameters_scaled = scaler.fit_transform(combination_parameters)
 
     plot_PCA(combination_parameters_scaled, SN_labels, combination_parameters_names)
     best_number = number_of_clusters(combination_parameters_scaled)
 
-    kmeans = KMeans(n_clusters = best_number, random_state = 2211)
+    kmeans = KMeans(n_clusters = best_number, random_state = 2804)
     kmeans.fit(combination_parameters_scaled)
 
     plot_PCA_with_clusters(combination_parameters_scaled, SN_labels, kmeans, best_number, number_of_peaks)
 
     # %%
 
-    # combine the two one-peak
+    # # combine the two no two-peak
 
-    one_peak = np.where(number_of_peaks == 1)
+    # one_peak = np.where(number_of_peaks == 1)
 
-    combination_parameters_names = parameters_two_peaks_names  + global_parameters_names
+    # combination_parameters_names = parameters_two_peaks_names  + global_parameters_names
 
-    combination_parameters = np.hstack([fitting_parameters[one_peak, 1:][0], global_parameters[one_peak]])
+    # combination_parameters = np.hstack([fitting_parameters[one_peak, 1:][0], global_parameters[one_peak]])
 
-    combination_parameters_scaled = scaler.fit_transform(combination_parameters)
+    # combination_parameters_scaled = scaler.fit_transform(combination_parameters)
 
-    plot_PCA(combination_parameters_scaled, SN_labels[one_peak], combination_parameters_names)
-    best_number = number_of_clusters(combination_parameters_scaled)
+    # plot_PCA(combination_parameters_scaled, SN_labels[one_peak], combination_parameters_names)
+    # best_number = number_of_clusters(combination_parameters_scaled)
 
-    kmeans = KMeans(n_clusters = best_number, random_state = 2211)
-    kmeans.fit(combination_parameters_scaled)
+    # kmeans = KMeans(n_clusters = best_number, random_state = 2804)
+    # kmeans.fit(combination_parameters_scaled)
 
-    plot_PCA_with_clusters(combination_parameters_scaled, SN_labels[one_peak], kmeans, best_number, number_of_peaks[one_peak])
+    # plot_PCA_with_clusters(combination_parameters_scaled, SN_labels[one_peak], kmeans, best_number, number_of_peaks[one_peak])
 
     # %%
 
     #### low dimension + fitting parameters
 
-    one_peak = np.where(number_of_peaks == 1)
+    fitting_parameters_scaled = scaler.fit_transform(fitting_parameters[:, 1:])
 
-    fitting_parameters_scaled = scaler.fit_transform(fitting_parameters[one_peak, 1:][0])
-
-    new_dimensions = loss_of_information(fitting_parameters_scaled, 60)
+    new_dimensions = loss_of_information(fitting_parameters_scaled, 50, f"{survey}_fit_parameters_in_the_PC_space")
     print("best number of dimensions", new_dimensions)
     low_dimension_fitting_parameters = dimensionality_reduction(fitting_parameters_scaled, new_dimensions)
 
-    best_number = number_of_clusters(low_dimension_fitting_parameters)
+    best_number = number_of_clusters(low_dimension_fitting_parameters, f"{survey}_fit_parameters_in_the_PC_space")
 
-    kmeans = KMeans(n_clusters = best_number, random_state = 2211)
+    kmeans = KMeans(n_clusters = best_number, random_state = 2804)
     kmeans.fit(low_dimension_fitting_parameters)
 
-    plot_PCA_with_clusters(low_dimension_fitting_parameters, SN_labels[one_peak], kmeans, best_number, number_of_peaks[one_peak])#, f"{survey}_one-peak_model_parameters_after_dimensionality_reduction")
+    plot_PCA_with_clusters(low_dimension_fitting_parameters, SN_labels, kmeans, best_number, number_of_peaks, f"{survey}_fit_parameters_in_the_PC_space")
 
     # %%
 
@@ -490,55 +500,124 @@ if __name__ == '__main__':
 
     fitting_parameters_scaled = scaler.fit_transform(fitting_parameters_one_peak[:, 1:])
 
-    new_dimensions = loss_of_information(fitting_parameters_scaled, 75)
+    new_dimensions = loss_of_information(fitting_parameters_scaled, 50, f"{survey}_one-peak_fit_parameters_in_the_PC_space")
     print("best number of dimensions", new_dimensions)
     low_dimension_fitting_parameters = dimensionality_reduction(fitting_parameters_scaled, new_dimensions)
 
-    best_number = number_of_clusters(low_dimension_fitting_parameters)
+    best_number = number_of_clusters(low_dimension_fitting_parameters, f"{survey}_one-peak_fit_parameters_in_the_PC_space")
 
-    kmeans = KMeans(n_clusters = best_number, random_state = 2211)
+    kmeans = KMeans(n_clusters = best_number, random_state = 2804)
     kmeans.fit(low_dimension_fitting_parameters)
 
-    plot_PCA_with_clusters(low_dimension_fitting_parameters, SN_labels, kmeans, best_number, number_of_peaks)#, f"{survey}_one-peak_model_parameters_after_dimensionality_reduction")
+    print(len(np.where(kmeans.labels_ == 1)[0]))
+
+    plot_PCA_with_clusters(low_dimension_fitting_parameters, SN_labels, kmeans, best_number, [1] * len(number_of_peaks), f"{survey}_one-peak_fit_parameters_in_the_PC_space")
 
     # %%
 
     #### low dimension + global parameters
 
-    global_parameters_scaled = scaler.fit_transform(global_parameters)
+    global_parameters_scaled = scaler.fit_transform(global_parameters_one_peak)
 
-    new_dimensions = loss_of_information(fitting_parameters_scaled)
+    new_dimensions = loss_of_information(global_parameters_scaled, 50, f"{survey}_light_curve_properties_in_the_PC_space")
     print("best number of dimensions", new_dimensions)
     low_dimension_global_parameters = dimensionality_reduction(global_parameters_scaled, new_dimensions)
 
-    best_number = number_of_clusters(low_dimension_global_parameters)
+    best_number = number_of_clusters(low_dimension_global_parameters, f"{survey}_light_curve_properties_in_the_PC_space")
 
-    kmeans = KMeans(n_clusters = best_number, random_state = 2211)
+    kmeans = KMeans(n_clusters = best_number, random_state = 2804)
     kmeans.fit(low_dimension_global_parameters)
 
-    plot_PCA_with_clusters(low_dimension_global_parameters, SN_labels, kmeans, best_number, number_of_peaks)
+    print(len(np.where(kmeans.labels_ == 1)[0]))
+
+    plot_PCA_with_clusters(low_dimension_global_parameters, SN_labels, kmeans, best_number, number_of_peaks, f"{survey}_light_curve_properties_in_the_PC_space")
+
+    # %%
+
+    #### low dimension + combine the two
+
+    combination_parameters_names = parameters_two_peaks_names  + global_parameters_names
+
+    combination_parameters = np.hstack([fitting_parameters[:, 1:], global_parameters])
+
+    combination_parameters_scaled = scaler.fit_transform(combination_parameters)
+
+    new_dimensions = loss_of_information(combination_parameters_scaled, 50, f"{survey}_combined_dataset_in_the_PC_space")
+    print("best number of dimensions", new_dimensions)
+    low_dimension_combination_parameters = dimensionality_reduction(combination_parameters_scaled, new_dimensions)
+
+    best_number = number_of_clusters(low_dimension_combination_parameters, f"{survey}_combined_dataset_in_the_PC_space")
+
+    kmeans = KMeans(n_clusters = best_number, random_state = 2804)
+    kmeans.fit(low_dimension_combination_parameters)
+
+    plot_PCA_with_clusters(low_dimension_combination_parameters, SN_labels, kmeans, best_number, number_of_peaks, f"{survey}_combined_dataset_in_the_PC_space")
+
+    # %%
+
+    #### low dimension + combine the two one-peak fit
+
+    # combination_parameters_names = parameters_one_peak_names  + global_parameters_names
+
+    combination_parameters = np.hstack([fitting_parameters_one_peak[:, 1:], global_parameters_one_peak])
+
+    combination_parameters_scaled = scaler.fit_transform(combination_parameters)
+
+    new_dimensions = loss_of_information(combination_parameters_scaled, 50, f"{survey}_combined_dataset_in_the_PC_space")
+    print("best number of dimensions", new_dimensions)
+    low_dimension_combination_parameters = dimensionality_reduction(combination_parameters_scaled, new_dimensions)
+
+    best_number = number_of_clusters(low_dimension_combination_parameters, f"{survey}_combined_dataset_in_the_PC_space")
+
+    kmeans = KMeans(n_clusters = best_number, random_state = 2804)
+    kmeans.fit(low_dimension_combination_parameters)
+
+    print(len(np.where(kmeans.labels_ == 2)[0]))
+
+    plot_PCA_with_clusters(low_dimension_combination_parameters, SN_labels, kmeans, best_number, number_of_peaks, f"{survey}_combined_dataset_in_the_PC_space")
+
+    # %%
+
+    # #### low dimension + combine the two one-peak
+
+    # # combination_parameters_names = parameters_two_peaks_names  + global_parameters_names
+
+    # combination_parameters = np.hstack([fitting_parameters[one_peak, 1:][0], global_parameters[one_peak]])
+
+    # combination_parameters_scaled = scaler.fit_transform(combination_parameters)
+
+    # new_dimensions = loss_of_information(combination_parameters_scaled, 50)
+    # print("best number of dimensions", new_dimensions)
+    # low_dimension_combination_parameters = dimensionality_reduction(combination_parameters_scaled, new_dimensions)
+
+    # best_number = number_of_clusters(low_dimension_combination_parameters)
+
+    # kmeans = KMeans(n_clusters = best_number, random_state = 2804)
+    # kmeans.fit(low_dimension_combination_parameters)
+
+    # plot_PCA_with_clusters(low_dimension_combination_parameters, SN_labels[one_peak], kmeans, best_number, number_of_peaks[one_peak])
 
     # %%
 
     # collection_times_f1, collection_times_f2, collection_fluxes_f1, collection_fluxes_f2 = plot_SN_collection(survey, fitting_parameters[one_peak], number_of_peaks[one_peak])
-    collection_times_f1, collection_times_f2, collection_fluxes_f1, collection_fluxes_f2 = plot_SN_collection(survey, fitting_parameters, number_of_peaks)
+    collection_times_f1, collection_times_f2, collection_fluxes_f1, collection_fluxes_f2 = plot_SN_collection(survey, fitting_parameters_one_peak, [1] * len(number_of_peaks))
 
     cluster_0 = np.where(kmeans.labels_ == 0)
     cluster_1 = np.where(kmeans.labels_ == 1)
-    # cluster_2 = np.where(kmeans.labels_ == 2)
+    cluster_2 = np.where(kmeans.labels_ == 2)
     # cluster_3 = np.where(kmeans.labels_ == 3)
 
-    # plt.plot(np.mean(np.array(collection_times_f1)[cluster_3], axis = 0), np.mean(np.array(collection_fluxes_f1)[cluster_3], axis = 0), linewidth = 2, color = "tab:cyan", label = "K-means cluster 3")
+    # plt.plot(np.mean(np.array(collection_times_f1)[cluster_3], axis = 0), np.mean(np.array(collection_fluxes_f1)[cluster_3], axis = 0), linewidth = 2, color = "#76B7B2", label = "K-means cluster 3")
     # plt.fill_between(np.mean(np.array(collection_times_f1)[cluster_3], axis = 0), np.mean(np.array(collection_fluxes_f1)[cluster_3], axis = 0) - np.std(np.array(collection_fluxes_f1)[cluster_3], axis = 0), np.mean(np.array(collection_fluxes_f1)[cluster_3], axis = 0) + np.std(np.array(collection_fluxes_f1)[cluster_3], axis = 0), color = "tab:cyan", alpha = 0.15)
     
-    # plt.plot(np.mean(np.array(collection_times_f1)[cluster_2], axis = 0), np.mean(np.array(collection_fluxes_f1)[cluster_2], axis = 0), linewidth = 2, color = "tab:brown", label = "K-means cluster 2")
+    # plt.plot(np.mean(np.array(collection_times_f1)[cluster_2], axis = 0), np.mean(np.array(collection_fluxes_f1)[cluster_2], axis = 0), linewidth = 2, color = "#9C755F", label = "K-means cluster 3")
     # plt.fill_between(np.mean(np.array(collection_times_f1)[cluster_2], axis = 0), np.mean(np.array(collection_fluxes_f1)[cluster_2], axis = 0) - np.std(np.array(collection_fluxes_f1)[cluster_2], axis = 0), np.mean(np.array(collection_fluxes_f1)[cluster_2], axis = 0) + np.std(np.array(collection_fluxes_f1)[cluster_2], axis = 0), color = "tab:brown", alpha = 0.15)
 
-    plt.plot(np.mean(np.array(collection_times_f2)[cluster_1], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_1], axis = 0), linewidth = 2, color = "tab:purple", label = "K-means cluster 1")
-    plt.fill_between(np.mean(np.array(collection_times_f2)[cluster_1], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_1], axis = 0) - np.std(np.array(collection_fluxes_f2)[cluster_1], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_1], axis = 0) + np.std(np.array(collection_fluxes_f2)[cluster_1], axis = 0), color = "tab:purple", alpha = 0.15)
+    # plt.plot(np.mean(np.array(collection_times_f2)[cluster_1], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_1], axis = 0), linewidth = 2, color = "#B07AA1", label = "K-means cluster 2")
+    # plt.fill_between(np.mean(np.array(collection_times_f2)[cluster_1], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_1], axis = 0) - np.std(np.array(collection_fluxes_f2)[cluster_1], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_1], axis = 0) + np.std(np.array(collection_fluxes_f2)[cluster_1], axis = 0), color = "tab:purple", alpha = 0.15)
 
-    plt.plot(np.mean(np.array(collection_times_f2)[cluster_0], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_0], axis = 0), linewidth = 2, color = "tab:green", label = "K-means cluster 0")
-    plt.fill_between(np.mean(np.array(collection_times_f2)[cluster_0], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_0], axis = 0) - np.std(np.array(collection_fluxes_f2)[cluster_0], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_0], axis = 0) + np.std(np.array(collection_fluxes_f2)[cluster_0], axis = 0), color = "tab:green", alpha = 0.15)
+    # plt.plot(np.mean(np.array(collection_times_f2)[cluster_0], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_0], axis = 0), linewidth = 2, color = "#59A14F", label = "K-means cluster 1")
+    # plt.fill_between(np.mean(np.array(collection_times_f2)[cluster_0], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_0], axis = 0) - np.std(np.array(collection_fluxes_f2)[cluster_0], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_0], axis = 0) + np.std(np.array(collection_fluxes_f2)[cluster_0], axis = 0), color = "tab:green", alpha = 0.15)
 
     # plt.scatter(np.array(collection_times_f1)[cluster_3], np.array(collection_fluxes_f1)[cluster_3], s = 1, color = "tab:cyan", label = "K-means cluster 3")
     # plt.legend()
@@ -555,35 +634,62 @@ if __name__ == '__main__':
     # plt.xlim([-200, 500])
     # plt.show()
 
-    # plt.scatter(np.array(collection_times_f1)[cluster_0], np.array(collection_fluxes_f1)[cluster_0], s = 1, color = "tab:green", label = "K-means cluster 0")
+    plt.scatter(np.array(collection_times_f1)[cluster_0], np.array(collection_fluxes_f1)[cluster_0], s = 1, color = "tab:green", label = "K-means cluster 0")
     # plt.legend()
     # plt.xlim([-200, 500])
     # plt.show()
 
     plt.xlabel("Time since peak (days)", fontsize = 13)
     plt.ylabel("Normalized flux", fontsize = 13)
-    plt.title(f"Normalized ZTF light curves after dimensionality reduction in the r-band.")
+    plt.title(f"Normalized {survey} r-band light curves.")
     plt.grid(alpha = 0.3) 
     plt.legend()
-    # plt.savefig(f"Presentation/light_curve_template_ATLAS_light_curve_properties", dpi = 300, bbox_inches = "tight")
+    # plt.savefig(f"Presentation/light_curve_template_{survey}_combined_dataset_in_the_PC_space", dpi = 300, bbox_inches = "tight")
+    plt.show()
+
+    # %%
+
+    for name in fitting_parameters[cluster_1, 0][0]:
+        print(name)
+        time, flux, _, filters = ztf_load_data(name)
+        f1_values = np.where(filters == "r")
+
+        # Shift the light curve so that the main peak is at time = 0 MJD
+        peak_main_idx = np.argmax(flux[f1_values])
+        peak_time = np.copy(time[peak_main_idx])
+        peak_flux = np.copy(flux[peak_main_idx])
+
+        time -= peak_time
+        flux /= peak_flux
+
+        plt.scatter(time[f1_values], flux[f1_values], s = 1, color = "#B07AA1" )
+
     plt.show()
 
     # %%
 
     cluster_0 = np.where(kmeans.labels_ == 0)
     cluster_1 = np.where(kmeans.labels_ == 1)
+    cluster_2 = np.where(kmeans.labels_ == 2)
 
-    print(fitting_parameters[one_peak, 0][0][cluster_0])
-    print(fitting_parameters[one_peak, 0][0][cluster_1])
+    # print(fitting_parameters[one_peak, 0][0][cluster_0])
+    # print(fitting_parameters[one_peak, 0][0][cluster_1])
 
-    # print(fitting_parameters_one_peak[:, 0][cluster_0])
-    # print(fitting_parameters_one_peak[:, 0][cluster_1])
+    print(fitting_parameters_one_peak[:, 0][cluster_0], len(fitting_parameters_one_peak[:, 0][cluster_0]))
+    print(fitting_parameters_one_peak[:, 0][cluster_1], len(fitting_parameters_one_peak[:, 0][cluster_1]))
+    print(fitting_parameters_one_peak[:, 0][cluster_2], len(fitting_parameters_one_peak[:, 0][cluster_2]))
 
     # print(fitting_parameters[:, 0][cluster_0])
     # print(fitting_parameters[:, 0][cluster_1])
+        
+    print(SN_labels[cluster_0])
+    print(SN_labels[cluster_1])
+    print(SN_labels[cluster_2])
 
+    # %%
 
-
+    print(np.std(global_parameters_one_peak[cluster_1, 4][0]/30))
+    
     # %%
 
     for idx in cluster_1[0]:
@@ -612,7 +718,7 @@ if __name__ == '__main__':
         # flux_max_f2 = np.copy(np.max(flux[f2_values]))
         # flux_f2 = (flux[f2_values]) / flux_max_f2
 
-        plt.scatter(time[f1_values], flux_f1, s = 1, c = "tab:blue")
+        plt.scatter(time[f1_values], flux_f1, s = 1, c = "#4E79A7")
 
     for idx in cluster_0[0]:
         
@@ -663,7 +769,7 @@ if __name__ == '__main__':
 
     # def plot_tSNE(parameter_values, SN_type):
 
-    #     model = TSNE(n_components = 2, random_state = 2211)
+    #     model = TSNE(n_components = 2, random_state = 2804)
 
     #     tsne_data = model.fit_transform(parameter_values)
     #     tsne_df = pd.DataFrame(data = tsne_data, columns = ("Dimension 1", "Dimension 2"))
@@ -691,7 +797,7 @@ if __name__ == '__main__':
 
     # def plot_UMAP(parameter_values, SN_type):
 
-    #     reducer = umap.UMAP(random_state = 2211)
+    #     reducer = umap.UMAP(random_state = 2804)
 
     #     UMAP_data = reducer.fit_transform(parameter_values)
 
@@ -717,3 +823,93 @@ if __name__ == '__main__':
 
 
 
+# %%
+
+fitting_parameters_one_peak[cluster_1, 1:][0][0]
+
+# %%
+global_parameters_one_peak[166]
+# %%
+
+def calculate_global_parameters(SN_id, survey, parameter_values):
+
+    if survey == "ZTF":
+        f1 = "r"
+        f2 = "g"
+
+        time, flux, _, filters = ztf_load_data(SN_id)
+
+    if survey == "ATLAS":
+        f1 = "o"
+        f2 = "c"
+
+        # Load the data
+        time, flux, _, filters = atlas_load_data(SN_id)
+
+    f1_values = np.where(filters == f1)
+
+    # Shift the light curve so that the main peak is at time = 0 MJD
+    peak_main_idx = np.argmax(flux[f1_values])
+    peak_time = np.copy(time[peak_main_idx])
+    peak_flux = np.copy(flux[peak_main_idx])
+
+    time -= peak_time
+
+    amount_fit = 1000
+    time_fit = np.concatenate((np.linspace(time.min() - 75, time.max() + 75, amount_fit), np.linspace(time.min() - 75, time.max() + 75, amount_fit)))
+    f1_values_fit = np.arange(amount_fit)
+    f2_values_fit = np.arange(amount_fit) + amount_fit
+
+    flux_fit = light_curve_one_peak(time_fit, parameter_values[:14], peak_flux, f1_values_fit, f2_values_fit)
+
+    magnitude_fit, _ = atlas_micro_flux_to_magnitude(flux_fit, flux_fit)
+
+    time_fit += peak_time
+
+    # In filter 1
+    peak_fit_idx_f1 = np.argmax(flux_fit[f1_values_fit])
+    peak_time_fit_f1 = np.copy(time_fit[peak_fit_idx_f1])
+    peak_flux_fit_f1 = np.copy(flux_fit[peak_fit_idx_f1])
+    time_fit_f1 = time_fit - peak_time_fit_f1
+
+    # Peak magnitude
+    peak_magnitude_f1 = magnitude_fit[peak_fit_idx_f1]
+
+    # Magnitude difference peak - 15 days after
+    fifteen_days_after_peak_f1 = np.argmin(np.abs(time_fit_f1[f1_values_fit] - 50))
+    fifteen_days_magnitude_f1 = magnitude_fit[fifteen_days_after_peak_f1]
+    fifteen_days_magnitude_difference_f1 = np.abs(peak_magnitude_f1 - fifteen_days_magnitude_f1)
+
+    # Magnitude difference peak - 30 days after
+    thirty_days_after_peak_f1 = np.argmin(np.abs(time_fit_f1[f1_values_fit] - 100))
+    thirty_days_magnitude_f1 = magnitude_fit[thirty_days_after_peak_f1]
+    thirty_days_magnitude_difference_f1 = np.abs(peak_magnitude_f1 - thirty_days_magnitude_f1)
+
+    # In filter 2
+    peak_fit_idx_f2 = np.argmax(flux_fit[f2_values_fit]) + amount_fit
+    peak_time_fit_f2 = np.copy(time_fit[peak_fit_idx_f2])
+    peak_flux_fit_f2 = np.copy(flux_fit[peak_fit_idx_f2])
+    time_fit_f2 = time_fit - peak_time_fit_f2
+
+    # Peak magnitude
+    peak_magnitude_f2 = magnitude_fit[peak_fit_idx_f2]
+
+    # Magnitude difference peak - 15 days after
+    fifteen_days_after_peak_f2 = np.argmin(np.abs(time_fit_f2[f2_values_fit] - 50)) + amount_fit
+    fifteen_days_magnitude_f2 = magnitude_fit[fifteen_days_after_peak_f2]
+    fifteen_days_magnitude_difference_f2 = np.abs(peak_magnitude_f2 - fifteen_days_magnitude_f2)
+
+    # Magnitude difference peak - 30 days after
+    thirty_days_after_peak_f2 = np.argmin(np.abs(time_fit_f2[f2_values_fit] - 100)) + amount_fit
+    thirty_days_magnitude_f2 = magnitude_fit[thirty_days_after_peak_f2]
+    thirty_days_magnitude_difference_f2 = np.abs(peak_magnitude_f2 - thirty_days_magnitude_f2)
+
+    return np.array([fifteen_days_magnitude_difference_f1, thirty_days_magnitude_difference_f1, \
+                     fifteen_days_magnitude_difference_f2, thirty_days_magnitude_difference_f2])
+
+# %%
+
+magnitude_rates = np.array([calculate_global_parameters(fitting_parameters_one_peak[cluster_1, 0][0][idx], survey, fitting_parameters_one_peak[cluster_1, 1:][0][idx]) for idx in range(len(fitting_parameters_one_peak[cluster_1, 0][0]))])
+# %%
+np.std(magnitude_rates[:, 0]/50)
+# %%

@@ -1,5 +1,5 @@
 # %%
-from kmeans_clustering import plot_PCA, plot_PCA_with_clusters, number_of_clusters
+from kmeans_clustering import plot_PCA_with_clusters, number_of_clusters, plot_SN_collection
 
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.cluster import KMeans
@@ -9,10 +9,7 @@ from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 import numpy as np
-import pandas as pd
-import random
 
 torch.manual_seed(2804)
 np.random.seed(2804)
@@ -24,7 +21,9 @@ plt.rcParams["text.usetex"] = True
 survey = "ZTF"
     
 fitting_parameters = np.load(f"Data/Input_ML/{survey}/fitting_parameters.npy", allow_pickle = True)
+fitting_parameters_one_peak = np.load(f"Data/Input_ML/{survey}/fitting_parameters_one_peak.npy", allow_pickle = True)
 global_parameters = np.load(f"Data/Input_ML/{survey}/global_parameters.npy")
+global_parameters_one_peak = np.load(f"Data/Input_ML/{survey}/global_parameters_one_peak.npy")
 number_of_peaks = np.load(f"Data/Input_ML/{survey}/number_of_peaks.npy")
 SN_labels = np.load(f"Data/Input_ML/{survey}/SN_labels.npy")
 SN_labels_color = np.load(f"Data/Input_ML/{survey}/SN_labels_color.npy")
@@ -113,10 +112,9 @@ class DeepEmbeddedClustering(nn.Module):
 
 # %%
 
-one_peak = np.where(number_of_peaks == 1)
+parameters = fitting_parameters[:, 1:].astype(np.float32)
 
-parameters = fitting_parameters[one_peak, 1:15][0].astype(np.float32)
-hidden_layers = [8, 16, 2]
+hidden_layers = [9, 18, 3]
 
 parameters_scaled = scaler.fit_transform(parameters)
 
@@ -136,7 +134,7 @@ learning_rate = 1e-3
 initialization_loss = nn.MSELoss()
 initialization_optimizer = torch.optim.Adam(autoencoder.parameters(), lr = learning_rate) 
 
-epochs = 2000
+epochs = 500
 
 for epoch in range(epochs):
 
@@ -155,16 +153,17 @@ latent_representation = autoencoder.encode(tensor_dataset).detach()
 
 latent_representation_names = ["latent_dimension_1", "latent_dimension_2", "latent_dimension_3", "latent_dimension_4", "latent_dimension_5", "latent_dimension_6"]
 
-best_number = number_of_clusters(latent_representation)
+best_number = number_of_clusters(latent_representation, f"{survey}_model_fit_parameters_in_the_latent_space")
 kmeans = KMeans(n_clusters = best_number, random_state = 2804)
 predictions = kmeans.fit_predict(latent_representation)
 
-plot_PCA_with_clusters(latent_representation, SN_labels[one_peak], kmeans, best_number, number_of_peaks[one_peak])
+plot_PCA_with_clusters(latent_representation, SN_labels, kmeans, best_number, number_of_peaks, f"{survey}_model_fit_parameters_in_the_latent_space")
 
 # %%
 
-parameters = global_parameters.astype(np.float32)
-hidden_layers = [4, 8, 2]
+parameters = fitting_parameters_one_peak[:, 1:].astype(np.float32)
+
+hidden_layers = [9, 18, 3]
 
 parameters_scaled = scaler.fit_transform(parameters)
 
@@ -173,7 +172,7 @@ tensor_dataset = torch.tensor(parameters_scaled, dtype = torch.float32)
 dataset = TensorDataset(tensor_dataset, tensor_dataset)
 
 # Create DataLoader for minibatches
-dataloader = DataLoader(dataset, batch_size = 16, shuffle = True)
+dataloader = DataLoader(dataset, batch_size = 32, shuffle = True)
 
 length_parameters = len(parameters_scaled[0])
 autoencoder = AutoEncoder(n_input = length_parameters, n_nodes = hidden_layers)
@@ -184,7 +183,7 @@ learning_rate = 1e-3
 initialization_loss = nn.MSELoss()
 initialization_optimizer = torch.optim.Adam(autoencoder.parameters(), lr = learning_rate) 
 
-epochs = 2000
+epochs = 500
 
 for epoch in range(epochs):
 
@@ -203,11 +202,125 @@ latent_representation = autoencoder.encode(tensor_dataset).detach()
 
 latent_representation_names = ["latent_dimension_1", "latent_dimension_2", "latent_dimension_3", "latent_dimension_4", "latent_dimension_5", "latent_dimension_6"]
 
-best_number = number_of_clusters(latent_representation)
+best_number = number_of_clusters(latent_representation, f"{survey}_one-peak_model_fit_parameters_in_the_latent_space")
 kmeans = KMeans(n_clusters = best_number, random_state = 2804)
 predictions = kmeans.fit_predict(latent_representation)
 
-plot_PCA_with_clusters(latent_representation, SN_labels, kmeans, best_number, number_of_peaks)
+print(len(np.where(kmeans.labels_ == 0)[0]))
+print(len(np.where(kmeans.labels_ == 1)[0]))
+
+plot_PCA_with_clusters(latent_representation, SN_labels, kmeans, best_number, [1]*len(number_of_peaks), f"{survey}_one-peak_model_fit_parameters_in_the_latent_space")
+
+# %%
+
+parameters = global_parameters.astype(np.float32)
+hidden_layers = [9, 21, 3]
+
+parameters_scaled = scaler.fit_transform(parameters)
+
+# Create a TensorDataset with the data as both inputs and targets
+tensor_dataset = torch.tensor(parameters_scaled, dtype = torch.float32)
+dataset = TensorDataset(tensor_dataset, tensor_dataset)
+
+# Create DataLoader for minibatches
+dataloader = DataLoader(dataset, batch_size = 32, shuffle = True)
+
+length_parameters = len(parameters_scaled[0])
+autoencoder = AutoEncoder(n_input = length_parameters, n_nodes = hidden_layers)
+autoencoder.train()
+
+# Initialize parameters of AutoEncoder
+learning_rate = 1e-4
+initialization_loss = nn.MSELoss()
+initialization_optimizer = torch.optim.Adam(autoencoder.parameters(), lr = learning_rate) 
+
+epochs = 1000
+
+for epoch in range(epochs):
+
+    for input_parameters, _ in dataloader:
+        
+        input_parameters = input_parameters.reshape(-1, length_parameters)
+        reconstructed = autoencoder(input_parameters)
+            
+        training_loss = initialization_loss(input_parameters, reconstructed)
+    
+        initialization_optimizer.zero_grad()
+        training_loss.backward()
+        initialization_optimizer.step()
+
+latent_representation = autoencoder.encode(tensor_dataset).detach()
+
+latent_representation_names = ["latent_dimension_1", "latent_dimension_2", "latent_dimension_3", "latent_dimension_4", "latent_dimension_5", "latent_dimension_6"]
+
+best_number = number_of_clusters(latent_representation, f"{survey}_light_curve_properties_in_the_latent_space")
+kmeans = KMeans(n_clusters = best_number, random_state = 2804)
+predictions = kmeans.fit_predict(latent_representation)
+
+print(len(np.where(kmeans.labels_ == 0)[0]))
+print(len(np.where(kmeans.labels_ == 1)[0]))
+print(len(np.where(kmeans.labels_ == 2)[0]))
+
+plot_PCA_with_clusters(latent_representation, SN_labels, kmeans, best_number, number_of_peaks, f"{survey}_light_curve_properties_in_the_latent_space")
+
+# %%
+
+parameters = np.hstack([fitting_parameters_one_peak[:, 1:], global_parameters_one_peak])
+hidden_layers = [21, 36, 3]
+
+parameters_scaled = scaler.fit_transform(parameters)
+
+# Create a TensorDataset with the data as both inputs and targets
+tensor_dataset = torch.tensor(parameters_scaled, dtype = torch.float32)
+dataset = TensorDataset(tensor_dataset, tensor_dataset)
+
+# Create DataLoader for minibatches
+dataloader = DataLoader(dataset, batch_size = 32, shuffle = True)
+
+length_parameters = len(parameters_scaled[0])
+autoencoder = AutoEncoder(n_input = length_parameters, n_nodes = hidden_layers)
+autoencoder.train()
+
+# Initialize parameters of AutoEncoder
+learning_rate = 1e-4
+initialization_loss = nn.MSELoss()
+initialization_optimizer = torch.optim.Adam(autoencoder.parameters(), lr = learning_rate) 
+
+epochs = 250
+
+for epoch in range(epochs):
+
+    for input_parameters, _ in dataloader:
+        
+        input_parameters = input_parameters.reshape(-1, length_parameters)
+        reconstructed = autoencoder(input_parameters)
+            
+        training_loss = initialization_loss(input_parameters, reconstructed)
+    
+        initialization_optimizer.zero_grad()
+        training_loss.backward()
+        initialization_optimizer.step()
+
+latent_representation = autoencoder.encode(tensor_dataset).detach()
+
+latent_representation_names = ["latent_dimension_1", "latent_dimension_2", "latent_dimension_3", "latent_dimension_4", "latent_dimension_5", "latent_dimension_6"]
+
+best_number = number_of_clusters(latent_representation, f"{survey}_combined_dataset_in_the_latent_space")
+kmeans = KMeans(n_clusters = best_number, random_state = 2804)
+predictions = kmeans.fit_predict(latent_representation)
+
+print(len(np.where(kmeans.labels_ == 0)[0]))
+print(len(np.where(kmeans.labels_ == 1)[0]))
+
+plot_PCA_with_clusters(latent_representation, SN_labels, kmeans, best_number, [1] * len(number_of_peaks),  f"{survey}_combined_dataset_in_the_latent_space")
+
+# %%
+
+best_number = 2
+kmeans = KMeans(n_clusters = best_number, random_state = 2804)
+predictions = kmeans.fit_predict(latent_representation)
+
+plot_PCA_with_clusters(latent_representation, SN_labels, kmeans, best_number, [1] * len(number_of_peaks),  f"{survey}_combined_dataset_in_the_latent_space")
 
 # %%
 # Initialize DEC
@@ -216,7 +329,7 @@ DEC = DeepEmbeddedClustering(autoencoder, cluster_centres = None, alpha = 1)
 # Initialize cluster centres
 latent_dataset = autoencoder.encode(tensor_dataset).detach()
 
-kmeans = KMeans(n_clusters = 2, random_state = 2804)
+kmeans = KMeans(n_clusters = best_number, random_state = 2804)
 previous_predictions = kmeans.fit_predict(latent_dataset.numpy())
 
 cluster_centres = torch.tensor(kmeans.cluster_centers_, dtype = torch.float, requires_grad = True)
@@ -264,23 +377,79 @@ latent_representation = autoencoder.encode(tensor_dataset).detach()
 
 latent_representation_names = ["latent_dimension_1", "latent_dimension_2", "latent_dimension_3", "latent_dimension_4", "latent_dimension_5", "latent_dimension_6"]
 
-kmeans = KMeans(n_clusters = 2, random_state = 2804)
+kmeans = KMeans(n_clusters = best_number, random_state = 2804)
 predictions = kmeans.fit_predict(latent_representation)
 kmeans.cluster_centers_ = kmeans.cluster_centers_.astype(np.float64)
 
-plot_PCA_with_clusters(latent_representation, SN_labels[one_peak], kmeans, 2, number_of_peaks[one_peak])
+plot_PCA_with_clusters(latent_representation, SN_labels, kmeans, 2, [1] * len(number_of_peaks),  f"{survey}_SNe_using_an_autoencoder")
 
 # %%
 
 cluster_0 = np.where(predictions == 0)
 cluster_1 = np.where(predictions == 1)
+cluster_2 = np.where(predictions == 2)
 
-print(fitting_parameters[one_peak, 0][0][cluster_0])
-print(fitting_parameters[one_peak, 0][0][cluster_1])
+print(fitting_parameters_one_peak[:, 0][cluster_0], len(fitting_parameters_one_peak[:, 0][cluster_0]))
+print(fitting_parameters_one_peak[:, 0][cluster_1], len(fitting_parameters_one_peak[:, 0][cluster_1]))
+print(fitting_parameters_one_peak[:, 0][cluster_2], len(fitting_parameters_one_peak[:, 0][cluster_2]))
 
-print(SN_labels[one_peak][cluster_0])
-print(SN_labels[one_peak][cluster_1])
+print(SN_labels[cluster_0], len(SN_labels[cluster_0]))
+print(SN_labels[cluster_1], len(SN_labels[cluster_1]))
+print(SN_labels[cluster_2], len(SN_labels[cluster_2]))
+
 # %%
 'ZTF23abgnvya' 'ZTF23aaynmrz'
 # %%
 # %%
+
+# %%
+
+# collection_times_f1, collection_times_f2, collection_fluxes_f1, collection_fluxes_f2 = plot_SN_collection(survey, fitting_parameters[one_peak], number_of_peaks[one_peak])
+collection_times_f1, collection_times_f2, collection_fluxes_f1, collection_fluxes_f2 = plot_SN_collection(survey, fitting_parameters_one_peak, [1] * len(number_of_peaks))
+
+cluster_0 = np.where(kmeans.labels_ == 0)
+cluster_1 = np.where(kmeans.labels_ == 1)
+# cluster_2 = np.where(kmeans.labels_ == 2)
+# cluster_3 = np.where(kmeans.labels_ == 3)
+
+# plt.plot(np.mean(np.array(collection_times_f1)[cluster_3], axis = 0), np.mean(np.array(collection_fluxes_f1)[cluster_3], axis = 0), linewidth = 2, color = "#76B7B2", label = "K-means cluster 3")
+# plt.fill_between(np.mean(np.array(collection_times_f1)[cluster_3], axis = 0), np.mean(np.array(collection_fluxes_f1)[cluster_3], axis = 0) - np.std(np.array(collection_fluxes_f1)[cluster_3], axis = 0), np.mean(np.array(collection_fluxes_f1)[cluster_3], axis = 0) + np.std(np.array(collection_fluxes_f1)[cluster_3], axis = 0), color = "tab:cyan", alpha = 0.15)
+
+# plt.plot(np.mean(np.array(collection_times_f1)[cluster_2], axis = 0), np.mean(np.array(collection_fluxes_f1)[cluster_2], axis = 0), linewidth = 2, color = "#9C755F", label = "K-means cluster 3")
+# plt.fill_between(np.mean(np.array(collection_times_f1)[cluster_2], axis = 0), np.mean(np.array(collection_fluxes_f1)[cluster_2], axis = 0) - np.std(np.array(collection_fluxes_f1)[cluster_2], axis = 0), np.mean(np.array(collection_fluxes_f1)[cluster_2], axis = 0) + np.std(np.array(collection_fluxes_f1)[cluster_2], axis = 0), color = "tab:brown", alpha = 0.15)
+
+plt.plot(np.mean(np.array(collection_times_f2)[cluster_1], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_1], axis = 0), linewidth = 2, color = "#B07AA1", label = "K-means cluster 2")
+plt.fill_between(np.mean(np.array(collection_times_f2)[cluster_1], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_1], axis = 0) - np.std(np.array(collection_fluxes_f2)[cluster_1], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_1], axis = 0) + np.std(np.array(collection_fluxes_f2)[cluster_1], axis = 0), color = "tab:purple", alpha = 0.15)
+
+plt.plot(np.mean(np.array(collection_times_f2)[cluster_0], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_0], axis = 0), linewidth = 2, color = "#59A14F", label = "K-means cluster 1")
+plt.fill_between(np.mean(np.array(collection_times_f2)[cluster_0], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_0], axis = 0) - np.std(np.array(collection_fluxes_f2)[cluster_0], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_0], axis = 0) + np.std(np.array(collection_fluxes_f2)[cluster_0], axis = 0), color = "tab:green", alpha = 0.15)
+
+# plt.scatter(np.array(collection_times_f1)[cluster_3], np.array(collection_fluxes_f1)[cluster_3], s = 1, color = "tab:cyan", label = "K-means cluster 3")
+# plt.legend()
+# plt.xlim([-200, 500])
+# plt.show()
+
+# plt.scatter(np.array(collection_times_f1)[cluster_2], np.array(collection_fluxes_f1)[cluster_2], s = 1, color = "tab:brown", label = "K-means cluster 2")
+# plt.legend()
+# plt.xlim([-200, 500])
+# plt.show()
+
+# plt.scatter(np.array(collection_times_f1)[cluster_1], np.array(collection_fluxes_f1)[cluster_1], s = 1, color = "tab:purple", label = "K-means cluster 1")
+# plt.legend()
+# plt.xlim([-200, 500])
+# plt.show()
+
+# plt.scatter(np.array(collection_times_f1)[cluster_0], np.array(collection_fluxes_f1)[cluster_0], s = 1, color = "tab:green", label = "K-means cluster 0")
+# plt.legend()
+# plt.xlim([-200, 500])
+# plt.show()
+
+plt.xlabel("Time since peak (days)", fontsize = 13)
+plt.ylabel("Normalized flux", fontsize = 13)
+plt.title(f"Normalized {survey} r-band light curves.")
+plt.grid(alpha = 0.3) 
+plt.legend()
+plt.savefig(f"Presentation/light_curve_template_{survey}_combined_dataset_in_the_latent_space", dpi = 300, bbox_inches = "tight")
+plt.show()
+# %%
+

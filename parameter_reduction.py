@@ -53,7 +53,7 @@ def retrieve_parameters_one_peak(SN_names, survey):
 
 # Retrieve reduced chi squared values
 
-def retrieve_red_chi_squared(file_name, SN_names_Ia, SN_names_II):
+def retrieve_red_chi_squared(file_name, SN_names_I, SN_names_II):
 
     red_chi_squared_values_Ia = []
     red_chi_squared_values_II = []
@@ -61,9 +61,6 @@ def retrieve_red_chi_squared(file_name, SN_names_Ia, SN_names_II):
     with open(file_name, "r") as file:
 
         reader = csv.reader(file)
-
-        # Skip the header
-        next(reader)
 
         for row in reader:
         
@@ -124,19 +121,20 @@ def plot_red_chi_squared(red_chi_squared_Ia, red_chi_squared_II, percentile_95, 
 
     min_bin = np.min(np.concatenate((red_chi_squared_Ia, red_chi_squared_II)))
     max_bin = np.max(np.concatenate((red_chi_squared_Ia, red_chi_squared_II)))
-    bins = np.linspace(min_bin, max_bin, 25)
+    bins = np.logspace(np.log10(min_bin), np.log10(max_bin), 30)
 
-    plt.hist(red_chi_squared_Ia, bins = bins, linewidth = 2, color = "tab:orange", histtype = "bar", alpha = 0.4, zorder = 10)
-    plt.hist(red_chi_squared_II, bins = bins, linewidth = 2, color = "tab:blue", histtype = "bar", alpha = 0.4, zorder = 5)
+    plt.hist(red_chi_squared_Ia, bins = bins, linewidth = 2, color = "#F28E2B", histtype = "bar", alpha = 0.4, zorder = 10)
+    plt.hist(red_chi_squared_II, bins = bins, linewidth = 2, color = "#4E79A7", histtype = "bar", alpha = 0.4, zorder = 5)
 
-    plt.hist(red_chi_squared_Ia, bins = bins, linewidth = 2, color = "tab:orange", histtype = "step",  fill = False, label = "SNe Ia-CSM", zorder = 10)
-    plt.hist(red_chi_squared_II, bins = bins, linewidth = 2, color = "tab:blue", histtype = "step",  fill = False, label = "SNe IIn", zorder = 5)
+    plt.hist(red_chi_squared_Ia, bins = bins, linewidth = 2, color = "#F28E2B", histtype = "step",  fill = False, label = "SNe Ia-CSM", zorder = 10)
+    plt.hist(red_chi_squared_II, bins = bins, linewidth = 2, color = "#4E79A7", histtype = "step",  fill = False, label = "SNe IIn", zorder = 5)
 
     plt.axvline(x = percentile_95, color = "black", linestyle = "dashed", label = f"95th percentile = {percentile_95:.2f}")
 
     plt.xlabel(r"$\mathrm{X}^{2}_{red}$", fontsize = 13)
     plt.ylabel("N", fontsize = 13)
     plt.title(r"$\mathrm{X}^{2}_{red}$" + f" distribution of {survey} SNe.")
+    plt.xscale("log")
     plt.grid(alpha = 0.3)
     plt.legend()
     plt.savefig(f"Presentation/red_chi_squared_{survey}.png", dpi = 300, bbox_inches = "tight")
@@ -249,7 +247,7 @@ def calculate_global_parameters(SN_id, survey, peak_number, parameter_values):
     time -= peak_time
 
     amount_fit = 1000
-    time_fit = np.concatenate((np.linspace(-500, 500, amount_fit), np.linspace(-500, 500, amount_fit)))
+    time_fit = np.concatenate((np.linspace(time.min() - 75, time.max() + 75, amount_fit), np.linspace(time.min() - 75, time.max() + 75, amount_fit)))
     f1_values_fit = np.arange(amount_fit)
     f2_values_fit = np.arange(amount_fit) + amount_fit
 
@@ -395,7 +393,7 @@ def calculate_peak_absolute_magnitude(apparent_magnitude, redshift):
 
 if __name__ == '__main__':
     
-    survey = "ATLAS"
+    survey = "ZTF"
 
     if survey == "ZTF":
         f1 = "r"
@@ -408,7 +406,7 @@ if __name__ == '__main__':
     # Load the SN names
     SN_names_Ia = np.loadtxt(f"Data/{survey}_SNe_Ia_CSM.txt", delimiter = ",", dtype = "str")
     SN_names_II = np.loadtxt(f"Data/{survey}_SNe_IIn.txt", delimiter = ",", dtype = "str")
-
+    print(len(SN_names_Ia) + len(SN_names_II))
     # %%
 
     # Retrieve the reduced chi squared values
@@ -422,22 +420,26 @@ if __name__ == '__main__':
     red_chi_squared_values_II = np.concatenate((red_chi_squared_values_OP_II, red_chi_squared_values_TP_II), axis = 0)
     red_chi_squared_values = np.concatenate((red_chi_squared_values_Ia, red_chi_squared_values_II))
     
+    # %%
     percentile_95 = np.percentile(red_chi_squared_values[:, 1], 95)
     print(percentile_95)
 
     # Remove light curves with reduced chi squared larger than the 95th percentile
     cut_light_curves = np.where(red_chi_squared_values[:, 1] > percentile_95)
+    print(len(cut_light_curves[0]), len(red_chi_squared_values[:, 1]))
 
     cut_light_curves_Ia = np.where(np.isin(SN_names_Ia, red_chi_squared_values[cut_light_curves, 0][0]))[0]
     cut_light_curves_II = np.where(np.isin(SN_names_II, red_chi_squared_values[cut_light_curves, 0][0]))[0]
 
+    print(len(SN_names_Ia) + len(SN_names_II))
     SN_names_Ia = np.delete(SN_names_Ia, cut_light_curves_Ia)
     SN_names_II = np.delete(SN_names_II, cut_light_curves_II)
+    print(len(SN_names_Ia) + len(SN_names_II))
 
     SN_labels = np.array(["SN Ia CSM"] * len(SN_names_Ia) + ["SN IIn"] * len(SN_names_II))
     SN_labels_color = np.array([0] * len(SN_names_Ia) + [1] * len(SN_names_II))
 
-    # plot_red_chi_squared(red_chi_squared_values_Ia[:, 1], red_chi_squared_values_II[:, 1], percentile_95, survey)
+    plot_red_chi_squared(red_chi_squared_values_Ia[:, 1], red_chi_squared_values_II[:, 1], percentile_95, survey)
 
     # %%
 
@@ -497,7 +499,7 @@ if __name__ == '__main__':
     for idx in range(len(fitting_parameters_II)):
     
         try:
-            parameter_values = calculate_global_parameters(fitting_parameters_II[idx, 0], survey, number_of_peaks[idx], fitting_parameters_II[idx, 1:])
+            parameter_values = calculate_global_parameters(fitting_parameters_II[idx, 0], survey, number_of_peaks[len(fitting_parameters_Ia) + idx], fitting_parameters_II[idx, 1:])
             global_parameters_II.append(parameter_values)
 
         except:
@@ -516,6 +518,11 @@ if __name__ == '__main__':
     global_parameters_II = np.array(global_parameters_II)
 
     global_parameters = np.concatenate((global_parameters_Ia, global_parameters_II))
+
+    # %%
+
+    number_of_peaks_one_peak = [1] * len(fitting_parameters_one_peak)
+    global_parameters_one_peak = np.array([calculate_global_parameters(fitting_parameters_one_peak[idx, 0], survey, number_of_peaks_one_peak[idx], fitting_parameters_one_peak[idx, 1:]) for idx in range(len(fitting_parameters_one_peak[:, 0]))])
 
     global_names = ["Peak magnitude", "Rise time [days]", "$\mathrm{m_{peak - 10d} - m_{peak}}$", "$\mathrm{m_{peak + 15d} - m_{peak}}$", \
                     "$\mathrm{m_{peak + 30d} - m_{peak}}$", "Duration above 50 \% of peak [days]", "Duration above 20 \% of peak [days]"]
@@ -538,6 +545,7 @@ if __name__ == '__main__':
     np.save(f"Data/Input_ML/{survey}/fitting_parameters.npy", fitting_parameters)
     np.save(f"Data/Input_ML/{survey}/fitting_parameters_one_peak.npy", fitting_parameters_one_peak)
     np.save(f"Data/Input_ML/{survey}/global_parameters.npy", global_parameters)
+    np.save(f"Data/Input_ML/{survey}/global_parameters_one_peak.npy", global_parameters_one_peak)
     np.save(f"Data/Input_ML/{survey}/number_of_peaks.npy", number_of_peaks)
     np.save(f"Data/Input_ML/{survey}/SN_labels.npy", SN_labels)
     np.save(f"Data/Input_ML/{survey}/SN_labels_color.npy", SN_labels_color)
