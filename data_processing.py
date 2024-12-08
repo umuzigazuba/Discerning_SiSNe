@@ -3,6 +3,9 @@
 import astropy.units as u
 from astropy.time import Time
 from astropy.coordinates import EarthLocation, SkyCoord, AltAz
+
+from dustmaps.config import config
+config['data_dir']= "utils/"
 from dustmaps.sfd import SFDQuery
 from extinction import fm07, remove
 
