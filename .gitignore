@@ -1,2 +1,3 @@
 **/__pycache__/
-Data/Nested_sampling_parameters/
+data/nested_sampling_results/
+data_retrieval/
