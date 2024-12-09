@@ -1168,12 +1168,12 @@ def fit_light_curve(SN_id, survey):
 if __name__ == '__main__':
     
     survey = "ZTF"
-    for SN_id in ztf_names[:1]:
+    for SN_id in ztf_names:
         
         fit_light_curve(SN_id, survey)
 
     survey = "ATLAS"
-    for SN_id in atlas_names[:1]:
+    for SN_id in atlas_names:
 
         fit_light_curve(SN_id, survey)
 

@@ -1,7 +1,7 @@
 # %%
 
-from src.data_processing import ztf_load_data, atlas_load_data, atlas_micro_flux_to_magnitude
-from src.parameter_estimation import light_curve_one_peak, light_curve_two_peaks
+from data_processing import ztf_load_data, atlas_load_data, atlas_micro_flux_to_magnitude
+from parameter_estimation import light_curve_one_peak, light_curve_two_peaks
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -28,12 +28,12 @@ def retrieve_parameters(SN_names, survey):
 
     for SN_id in SN_names:
 
-        if os.path.isfile(f"Data/Analytical_parameters/{survey}/two_peaks/{SN_id}_parameters_TP.npy"):
-            data = np.load(f"Data/Analytical_parameters/{survey}/two_peaks/{SN_id}_parameters_TP.npy")
+        if os.path.isfile(f"../data/best-fit/{survey}/two_peaks/{SN_id}_parameters_TP.npy"):
+            data = np.load(f"../data/best-fit/{survey}/two_peaks/{SN_id}_parameters_TP.npy")
             parameters_TP.append([SN_id, *data])
 
         else:
-            data = np.load(f"Data/Analytical_parameters/{survey}/one_peak/{SN_id}_parameters_OP.npy")
+            data = np.load(f"../data/best-fit/{survey}/one_peak/{SN_id}_parameters_OP.npy")
             parameters_OP.append([SN_id, *data])
 
     parameters_OP = np.array(parameters_OP, dtype = object)
@@ -47,8 +47,8 @@ def retrieve_parameters_one_peak(SN_names, survey):
 
     for SN_id in SN_names:
 
-        if os.path.isfile(f"Data/Analytical_parameters/{survey}/one_peak/{SN_id}_parameters_OP.npy"):
-            data = np.load(f"Data/Analytical_parameters/{survey}/one_peak/{SN_id}_parameters_OP.npy")
+        if os.path.isfile(f"../data/best-fit/{survey}/one_peak/{SN_id}_parameters_OP.npy"):
+            data = np.load(f"../data/best-fit/{survey}/one_peak/{SN_id}_parameters_OP.npy")
             parameters_OP.append([SN_id, *data])
 
     parameters_OP = np.array(parameters_OP, dtype = object)
@@ -143,7 +143,7 @@ def plot_red_chi_squared(red_chi_squared_Ia, red_chi_squared_II, percentile_95, 
     plt.xscale("log")
     plt.grid(alpha = 0.3)
     plt.legend()
-    plt.savefig(f"Plots/Results/red_chi_squared_{survey}.png", dpi = 300, bbox_inches = "tight")
+    plt.savefig(f"../plots/best-fit/{survey}/red_chi_squared_{survey}.png", dpi = 300, bbox_inches = "tight")
     plt.show()
 
 # %%
@@ -352,7 +352,7 @@ def calculate_global_parameters(SN_id, survey, peak_number, parameter_values):
 
 def retrieve_redshift(SN_names, survey):
 
-    survey_information = pd.read_csv(f"Data/{survey}_info.csv")
+    survey_information = pd.read_csv(f"../data/external/{survey}_info.csv")
     redshifts = []
 
     for name in SN_names:
@@ -410,14 +410,14 @@ if __name__ == '__main__':
         f2 = 'c'
 
     # Load the SN names
-    SN_names_Ia = np.loadtxt(f"Data/{survey}_SNe_Ia_CSM.txt", delimiter = ",", dtype = "str")
-    SN_names_II = np.loadtxt(f"Data/{survey}_SNe_IIn.txt", delimiter = ",", dtype = "str")
+    SN_names_Ia = np.loadtxt(f"../data/processed/{survey}/{survey}_SNe_Ia_CSM.txt", delimiter = ",", dtype = "str")
+    SN_names_II = np.loadtxt(f"../data/processed/{survey}/{survey}_SNe_IIn.txt", delimiter = ",", dtype = "str")
     print(len(SN_names_Ia) + len(SN_names_II))
     # %%
 
     # Retrieve the reduced chi squared values
-    red_chi_squared_values_OP_Ia, red_chi_squared_values_OP_II = retrieve_red_chi_squared(f"Data/Analytical_parameters/{survey}/one_peak/red_chi_squared_OP.csv", SN_names_Ia, SN_names_II)
-    red_chi_squared_values_TP_Ia, red_chi_squared_values_TP_II = retrieve_red_chi_squared(f"Data/Analytical_parameters/{survey}/two_peaks/red_chi_squared_TP.csv", SN_names_Ia, SN_names_II)
+    red_chi_squared_values_OP_Ia, red_chi_squared_values_OP_II = retrieve_red_chi_squared(f"../data/best-fit/{survey}/one_peak/red_chi_squared_OP.csv", SN_names_Ia, SN_names_II)
+    red_chi_squared_values_TP_Ia, red_chi_squared_values_TP_II = retrieve_red_chi_squared(f"../data/best-fit/{survey}/two_peaks/red_chi_squared_TP.csv", SN_names_Ia, SN_names_II)
 
     if len(red_chi_squared_values_TP_Ia) != 0:
         red_chi_squared_values_Ia = np.concatenate((red_chi_squared_values_OP_Ia, red_chi_squared_values_TP_Ia), axis = 0)
@@ -489,7 +489,7 @@ if __name__ == '__main__':
 
         except ValueError: 
             # Remove light curve from list because it cannot be fit
-            file_name = f"Data/{survey}_SNe_Ia_CSM.txt"
+            file_name = f"../data/processed/{survey}/{survey}_SNe_Ia_CSM.txt"
                 
             with open(file_name, "r") as file:             
                 SN_names = file.readlines()
@@ -510,7 +510,7 @@ if __name__ == '__main__':
 
         except:
             # Remove light curve from list because it cannot be fit
-            file_name = f"Data/{survey}_SNe_IIn.txt"
+            file_name = f"../data/processed/{survey}/{survey}_SNe_IIn.txt"
                 
             with open(file_name, "r") as file:             
                 SN_names = file.readlines()
@@ -548,12 +548,12 @@ if __name__ == '__main__':
 
     # %%
 
-    np.save(f"Data/Input_ML/{survey}/fitting_parameters.npy", fitting_parameters)
-    np.save(f"Data/Input_ML/{survey}/fitting_parameters_one_peak.npy", fitting_parameters_one_peak)
-    np.save(f"Data/Input_ML/{survey}/global_parameters.npy", global_parameters)
-    np.save(f"Data/Input_ML/{survey}/global_parameters_one_peak.npy", global_parameters_one_peak)
-    np.save(f"Data/Input_ML/{survey}/number_of_peaks.npy", number_of_peaks)
-    np.save(f"Data/Input_ML/{survey}/SN_labels.npy", SN_labels)
-    np.save(f"Data/Input_ML/{survey}/SN_labels_color.npy", SN_labels_color)
+    np.save(f"../data/machine_learning/{survey}/fitting_parameters.npy", fitting_parameters)
+    np.save(f"../data/machine_learning/{survey}/fitting_parameters_one_peak.npy", fitting_parameters_one_peak)
+    np.save(f"../data/machine_learning/{survey}/global_parameters.npy", global_parameters)
+    np.save(f"../data/machine_learning/{survey}/global_parameters_one_peak.npy", global_parameters_one_peak)
+    np.save(f"../data/machine_learning/{survey}/number_of_peaks.npy", number_of_peaks)
+    np.save(f"../data/machine_learning/{survey}/SN_labels.npy", SN_labels)
+    np.save(f"../data/machine_learning/{survey}/SN_labels_color.npy", SN_labels_color)
 
 # %%
