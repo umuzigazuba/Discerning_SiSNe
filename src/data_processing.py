@@ -5,7 +5,7 @@ from astropy.time import Time
 from astropy.coordinates import EarthLocation, SkyCoord, AltAz
 
 from dustmaps.config import config
-config['data_dir']= "utils/"
+config['data_dir']= "../utils/"
 from dustmaps.sfd import SFDQuery
 from extinction import fm07, remove
 
@@ -26,7 +26,7 @@ colours = {"blue":"#0077BB", "orange": "#EE7733", "green":"#296529", "purple":"#
 # Generate data
 def ztf_retrieve_data(ztf_name):
 
-    with open(f"Data/ZTF_forced_photometry_data/raw/{ztf_name}.txt") as f:
+    with open(f"../data/ZTF_forced_photometry_data/raw/{ztf_name}.txt") as f:
 
         # Ignore lines with parameter explenation
         lines = (line for line in f if not line.startswith('#'))
@@ -152,7 +152,7 @@ def ztf_micro_flux_to_magnitude(flux, fluxerr, zero_point):
 # Load data saved in directory
 def ztf_load_data(ztf_name):
 
-    ztf_data = np.load(f"Data/ZTF_forced_photometry_data/processed/{ztf_name}_data.npy")
+    ztf_data = np.load(f"../data/ZTF_forced_photometry_data/processed/{ztf_name}_data.npy")
 
     time = ztf_data[:, 0]
     flux = ztf_data[:, 1]
@@ -185,7 +185,7 @@ def ztf_plot_data(ztf_name, time, flux, fluxerr, filters, extrema, save_fig = Fa
     plt.grid(alpha = 0.3)
     plt.legend()
     if save_fig:
-        plt.savefig(f"Plots/ZTF_lightcurves/Light_curve_{ztf_name}", dpi = 300)
+        plt.savefig(f"../plots/ZTF_lightcurves/Light_curve_{ztf_name}", dpi = 300)
         plt.close()
     else:
         plt.show()
@@ -198,7 +198,7 @@ def ztf_plot_data(ztf_name, time, flux, fluxerr, filters, extrema, save_fig = Fa
 def atlas_retrieve_data(atlas_name):
 
     # Load stacked and cleaned data 
-    atlas_data =  np.loadtxt(f"Data/ATLAS_forced_photometry_data/cleaned_and_stacked/{atlas_name}_atlas_fp_stacked_2_days.txt", delimiter = ",", dtype = str)
+    atlas_data =  np.loadtxt(f"../data/ATLAS_forced_photometry_data/cleaned_and_stacked/{atlas_name}_atlas_fp_stacked_2_days.txt", delimiter = ",", dtype = str)
 
     time = atlas_data[1:, 0].astype(np.float32)
     flux = atlas_data[1:, 1].astype(np.float32)
@@ -231,7 +231,7 @@ def atlas_micro_flux_to_magnitude(flux, fluxerr):
 # Load data saved in directory
 def atlas_load_data(atlas_name):
 
-    atlas_data = np.load(f"Data/ATLAS_forced_photometry_data/processed/{atlas_name}_data.npy")
+    atlas_data = np.load(f"../data/ATLAS_forced_photometry_data/processed/{atlas_name}_data.npy")
 
     time = atlas_data[:, 0]
     flux = atlas_data[:, 1]
@@ -265,7 +265,7 @@ def atlas_plot_data(atlas_name, time, flux, fluxerr, filters, extrema, save_fig 
     plt.grid(alpha = 0.3)
     plt.legend()
     if save_fig:
-        plt.savefig(f"Plots/ATLAS_lightcurves/Light_curve_{atlas_name}", dpi = 300)
+        plt.savefig(f"../plots/ATLAS_lightcurves/Light_curve_{atlas_name}", dpi = 300)
         plt.close()
     else:
         plt.show()
@@ -378,7 +378,7 @@ def ztf_data_processing(ztf_names, survey_information):
     f1_wavelength = 6366.38
     f2_wavelength = 4746.48
 
-    ccd_threshold = pd.read_csv("Data/zp_thresholds_quadID.txt", comment = "#", delimiter = " |\t", header = None, engine = "python")
+    ccd_threshold = pd.read_csv("../data/zp_thresholds_quadID.txt", comment = "#", delimiter = " |\t", header = None, engine = "python")
     ccd_threshold.columns = ["index", "g", "ignore_1", "ignore_2", "r", "ignore_3", "ignore_4", "i"]
 
     for name in ztf_names:
@@ -479,16 +479,16 @@ def ztf_data_processing(ztf_names, survey_information):
 
                         # Save data
                         SN_data = np.column_stack((time, flux, fluxerr, filters))
-                        np.save(f"Data/ZTF_forced_photometry_data/processed/{name}_data.npy", SN_data)
+                        np.save(f"../data/ZTF_forced_photometry_data/processed/{name}_data.npy", SN_data)
 
                         # Save name to file 
                         if SN_type == "SN Ia-CSM":
-                            names_file = open("Data/ZTF_SNe_Ia_CSM.txt", "a")
+                            names_file = open("../data/ZTF_SNe_Ia_CSM.txt", "a")
                             names_file.write(name + "\n")
                             names_file.close()
                         
                         elif SN_type == "SN IIn":
-                            names_file = open("Data/ZTF_SNe_IIn.txt", "a")
+                            names_file = open("../data/ZTF_SNe_IIn.txt", "a")
                             names_file.write(name + "\n")
                             names_file.close()
 
@@ -596,16 +596,16 @@ def atlas_data_processing(atlas_names, survey_information):
                     if len(filter_f1[0]) >= 5 and len(filter_f2[0]) >= 5:
                         # Save data
                         SN_data = np.column_stack((time, flux, fluxerr, filters))
-                        np.save(f"Data/ATLAS_forced_photometry_data/processed/{internal_name}_data.npy", SN_data)
+                        np.save(f"../data/ATLAS_forced_photometry_data/processed/{internal_name}_data.npy", SN_data)
 
                         # Save name to file 
                         if SN_type == "SN Ia-CSM":
-                            names_file = open("Data/ATLAS_SNe_Ia_CSM.txt", "a")
+                            names_file = open("../data/ATLAS_SNe_Ia_CSM.txt", "a")
                             names_file.write(internal_name + "\n")
                             names_file.close()
                         
                         elif SN_type == "SN IIn":
-                            names_file = open("Data/ATLAS_SNe_IIn.txt", "a")
+                            names_file = open("../data/ATLAS_SNe_IIn.txt", "a")
                             names_file.write(internal_name + "\n")
                             names_file.close()
 
@@ -617,13 +617,13 @@ def atlas_data_processing(atlas_names, survey_information):
 if __name__ == '__main__':
 
     # ZTF
-    ztf_information = pd.read_csv("Data/ZTF_info.csv")
+    ztf_information = pd.read_csv("../data/ZTF_info.csv")
     ztf_names = ztf_information["Disc. Internal Name"][~pd.isnull(ztf_information["Disc. Internal Name"])].values
     
     ztf_data_processing(ztf_names, ztf_information)
 
     #ATLAS
-    atlas_information = pd.read_csv("Data/ATLAS_info.csv")
+    atlas_information = pd.read_csv("../data/ATLAS_info.csv")
     atlas_names = atlas_information["Name"].values
     atlas_names = [name.replace(" ", "_") for name in atlas_names]
 
