@@ -1,5 +1,5 @@
 # %%
-from src.kmeans_clustering import plot_PCA_with_clusters, number_of_clusters, plot_SN_collection
+from kmeans_clustering import plot_PCA_with_clusters, number_of_clusters, plot_SN_collection
 
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.cluster import KMeans
@@ -24,13 +24,13 @@ colours = {"blue":"#0077BB", "orange": "#EE7733", "green":"#296529", "purple":"#
 
 survey = "ZTF"
     
-fitting_parameters = np.load(f"Data/Input_ML/{survey}/fitting_parameters.npy", allow_pickle = True)
-fitting_parameters_one_peak = np.load(f"Data/Input_ML/{survey}/fitting_parameters_one_peak.npy", allow_pickle = True)
-global_parameters = np.load(f"Data/Input_ML/{survey}/global_parameters.npy")
-global_parameters_one_peak = np.load(f"Data/Input_ML/{survey}/global_parameters_one_peak.npy")
-number_of_peaks = np.load(f"Data/Input_ML/{survey}/number_of_peaks.npy")
-SN_labels = np.load(f"Data/Input_ML/{survey}/SN_labels.npy")
-SN_labels_color = np.load(f"Data/Input_ML/{survey}/SN_labels_color.npy")
+fitting_parameters = np.load(f"../data/machine_learning/{survey}/fitting_parameters.npy", allow_pickle = True)
+fitting_parameters_one_peak = np.load(f"../data/machine_learning/{survey}/fitting_parameters_one_peak.npy", allow_pickle = True)
+global_parameters = np.load(f"../data/machine_learning/{survey}/global_parameters.npy")
+global_parameters_one_peak = np.load(f"../data/machine_learning/{survey}/global_parameters_one_peak.npy")
+number_of_peaks = np.load(f"../data/machine_learning/{survey}/number_of_peaks.npy")
+SN_labels = np.load(f"../data/machine_learning/{survey}/SN_labels.npy")
+SN_labels_color = np.load(f"../data/machine_learning/{survey}/SN_labels_color.npy")
 
 scaler = MinMaxScaler()
 
@@ -453,7 +453,7 @@ plt.ylabel("Normalized flux", fontsize = 13)
 plt.title(f"Normalized {survey} r-band light curves.")
 plt.grid(alpha = 0.3) 
 plt.legend()
-plt.savefig(f"Plots/Results/light_curve_template_{survey}_combined_dataset_in_the_latent_space", dpi = 300, bbox_inches = "tight")
+plt.savefig(f"../plots/machine_learning/Light_curve_template_{survey}_combined_dataset_in_the_latent_space", dpi = 300, bbox_inches = "tight")
 plt.show()
 # %%
 

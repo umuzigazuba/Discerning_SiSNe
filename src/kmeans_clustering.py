@@ -1,7 +1,7 @@
 # %%
 
-from src.data_processing import ztf_load_data, atlas_load_data, atlas_micro_flux_to_magnitude
-from src.parameter_estimation import light_curve_one_peak, light_curve_two_peaks
+from data_processing import ztf_load_data, atlas_load_data, atlas_micro_flux_to_magnitude
+from parameter_estimation import light_curve_one_peak, light_curve_two_peaks
 
 from sklearn.preprocessing import StandardScaler
 from sklearn import decomposition, metrics
@@ -123,7 +123,7 @@ def plot_PCA_with_clusters(parameter_values, SN_type, kmeans, best_number, numbe
     if type(save_fig) == str:
         name = save_fig.replace("_", " ")
         plt.title(f"K-means clusters of the {name}.")
-        plt.savefig(f"Plots/Results/PCA_plot_{save_fig}", dpi = 300, bbox_inches = "tight")
+        plt.savefig(f"../plots/machine_learning/PCA_plot_{save_fig}", dpi = 300, bbox_inches = "tight")
         plt.show()
 
     else:
@@ -241,7 +241,7 @@ def number_of_clusters(parameters, save_fig = False):
         name = save_fig.replace("_", " ")
         plt.title(f"Silhouette score of the {name}.")
         plt.grid(alpha = 0.5)
-        plt.savefig(f"Plots/Results/silhouette_score_{save_fig}", dpi = 300, bbox_inches = "tight")
+        plt.savefig(f"../plots/machine_learning/Silhouette_score_{save_fig}", dpi = 300, bbox_inches = "tight")
         plt.show()
 
     else:
@@ -291,13 +291,13 @@ if __name__ == '__main__':
 
     survey = "ZTF"
     
-    fitting_parameters = np.load(f"Data/Input_ML/{survey}/fitting_parameters.npy", allow_pickle = True)
-    fitting_parameters_one_peak = np.load(f"Data/Input_ML/{survey}/fitting_parameters_one_peak.npy", allow_pickle = True)
-    global_parameters = np.load(f"Data/Input_ML/{survey}/global_parameters.npy")
-    global_parameters_one_peak = np.load(f"Data/Input_ML/{survey}/global_parameters_one_peak.npy")
-    number_of_peaks = np.load(f"Data/Input_ML/{survey}/number_of_peaks.npy")
-    SN_labels = np.load(f"Data/Input_ML/{survey}/SN_labels.npy")
-    SN_labels_color = np.load(f"Data/Input_ML/{survey}/SN_labels_color.npy")
+    fitting_parameters = np.load(f"../data/machine_learning/{survey}/fitting_parameters.npy", allow_pickle = True)
+    fitting_parameters_one_peak = np.load(f"../data/machine_learning/{survey}/fitting_parameters_one_peak.npy", allow_pickle = True)
+    global_parameters = np.load(f"../data/machine_learning/{survey}/global_parameters.npy")
+    global_parameters_one_peak = np.load(f"../data/machine_learning/{survey}/global_parameters_one_peak.npy")
+    number_of_peaks = np.load(f"../data/machine_learning/{survey}/number_of_peaks.npy")
+    SN_labels = np.load(f"../data/machine_learning/{survey}/SN_labels.npy")
+    SN_labels_color = np.load(f"../data/machine_learning/{survey}/SN_labels_color.npy")
     scaler = StandardScaler()
 
     # %%
@@ -481,8 +481,6 @@ if __name__ == '__main__':
     # plot_PCA_with_clusters(combination_parameters_scaled, SN_labels[one_peak], kmeans, best_number, number_of_peaks[one_peak])
 
     # %%
-    list(colours.values())
-    # %%
 
     #### low dimension + fitting parameters
 
@@ -649,7 +647,7 @@ if __name__ == '__main__':
     plt.title(f"Normalized {survey} r-band light curves.")
     plt.grid(alpha = 0.3) 
     plt.legend()
-    # plt.savefig(f"Plots/Results/light_curve_template_{survey}_combined_dataset_in_the_PC_space", dpi = 300, bbox_inches = "tight")
+    # plt.savefig(f"../plots/machine_learning/Light_curve_template_{survey}_combined_dataset_in_the_PC_space", dpi = 300, bbox_inches = "tight")
     plt.show()
 
     # %%
