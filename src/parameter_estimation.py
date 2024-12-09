@@ -1,5 +1,5 @@
 # %%
-from src.data_processing import ztf_load_data, atlas_load_data
+from data_processing import ztf_load_data, atlas_load_data
 
 import fulu
 from sklearn.gaussian_process.kernels import (RBF, Matern, 
@@ -26,12 +26,12 @@ colours = {"blue":"#0077BB", "orange": "#EE7733", "green":"#296529", "purple":"#
 # %%
 
 # Load light curve data points 
-ztf_names_sn_Ia_CSM = np.loadtxt("Data/ZTF_SNe_Ia_CSM.txt", delimiter = ",", dtype = "str")
-ztf_names_sn_IIn = np.loadtxt("Data/ZTF_SNe_IIn.txt", delimiter = ",", dtype = "str")
+ztf_names_sn_Ia_CSM = np.loadtxt("../data/processed/ZTF/ZTF_SNe_Ia_CSM.txt", delimiter = ",", dtype = "str")
+ztf_names_sn_IIn = np.loadtxt("../data/processed/ZTF/ZTF_SNe_IIn.txt", delimiter = ",", dtype = "str")
 ztf_names = np.concatenate((ztf_names_sn_Ia_CSM, ztf_names_sn_IIn))
 
-atlas_names_sn_Ia_CSM = np.loadtxt("Data/ATLAS_SNe_Ia_CSM.txt", delimiter = ",", dtype = "str")
-atlas_names_sn_IIn = np.loadtxt("Data/ATLAS_SNe_IIn.txt", delimiter = ",", dtype = "str")
+atlas_names_sn_Ia_CSM = np.loadtxt("../data/processed/ATLAS/ATLAS_SNe_Ia_CSM.txt", delimiter = ",", dtype = "str")
+atlas_names_sn_IIn = np.loadtxt("../data/processed/ATLAS/ATLAS_SNe_IIn.txt", delimiter = ",", dtype = "str")
 atlas_names = np.concatenate((atlas_names_sn_Ia_CSM, atlas_names_sn_IIn))
 
 # %%
@@ -478,7 +478,7 @@ def find_extrema(time_aug, flux_aug, fluxerr_aug, f1_values_aug, f2_values_aug):
 
 ### Plotting ###
 
-def plot_extrema(time_aug, flux_aug, fluxerr_aug, f1_values_aug, f2_values_aug, peak_time, extrema_f1, extrema_f2):
+def plot_extrema(time_aug, flux_aug, fluxerr_aug, f1_values_aug, f2_values_aug, peak_time, extrema_f1, extrema_f2, save_name):
 
     global time, flux, fluxerr, filters, f1_values, f2_values, f1, f2
 
@@ -503,7 +503,7 @@ def plot_extrema(time_aug, flux_aug, fluxerr_aug, f1_values_aug, f2_values_aug, 
     plt.title(f"Light curve of SN {SN_id}.")
     plt.grid(alpha = 0.3)
     plt.legend()
-    # plt.savefig(f"ZTF_lightcurves_extrema_plots/ZTF_extrema_{SN_id}", dpi = 300)
+    plt.savefig(f"../plots/data_augmentation_extrema/{save_name}", dpi = 300)
     plt.show()
 
 # %%%
@@ -525,7 +525,7 @@ def plot_best_fit_light_curve(SN_id, red_chi_squared, time_fit, flux_fit, f1_val
     plt.title(f"Light curve of SN {SN_id}. " + r"$\mathrm{X}^{2}_{red}$" + f" = {red_chi_squared:.2f}.")
     plt.grid(alpha = 0.3)
     plt.legend()
-    plt.savefig(f"Plots/Analytical_plots/{save_name}", dpi = 300)
+    plt.savefig(f"../plots/best-fit/{save_name}", dpi = 300)
     plt.show()
 
 # %%
@@ -608,7 +608,7 @@ def plot_best_fit_light_curve_one_peak(SN_id, survey, red_chi_squared, time, flu
         plt.plot(time_fit[amount_fit:], flux_fit[amount_fit:], linestyle = "--", linewidth = 2, alpha = 0.9, color = colours["orange"], label = f"Best-fitted light curve {f2}-band")
     
     # Plot posterior samples
-    df = pd.read_csv(f"Data/Nested_sampling_parameters/{survey}/{SN_id}/one_peak/post_equal_weights.dat", delimiter = "\t")
+    df = pd.read_csv(f"../data/nested_sampling_results/{survey}/{SN_id}/one_peak/post_equal_weights.dat", delimiter = "\t")
     posterior_samples = df.to_numpy()  
 
     for idx in range(30):
@@ -628,7 +628,7 @@ def plot_best_fit_light_curve_one_peak(SN_id, survey, red_chi_squared, time, flu
     plt.grid(alpha = 0.3)
     plt.legend()
     if save_fig:
-        plt.savefig(f"Plots/Nested_sampling_plots/{survey}/one_peak/LC_one_peak_{SN_id}", dpi = 300)
+        plt.savefig(f"../plots/Nested_sampling_plots/{survey}/one_peak/LC_one_peak_{SN_id}", dpi = 300)
         plt.close()
     else:
         plt.show()
@@ -640,20 +640,20 @@ def find_parameters_one_peak(SN_id, survey):
     global time, flux, fluxerr, f1_values, f2_values, mean_one_peak, std_one_peak
 
     # Folder in which sampling results will be stored
-    os.makedirs(f"Data/Nested_sampling_parameters/{survey}/one_peak/{SN_id}/", exist_ok = True)
+    os.makedirs(f"../data/nested_sampling_results/{survey}/one_peak/{SN_id}/", exist_ok = True)
     
     # Run nested sampling to find the best parameters
     pymultinest.run(loglikelihood_one_peak, prior_one_peak, n_parameters_one_peak, n_live_points = 50,
-                    outputfiles_basename = f"Data/Nested_sampling_parameters/{survey}/one_peak/{SN_id}/",
+                    outputfiles_basename = f"../data/nested_sampling_results/{survey}/one_peak/{SN_id}/",
                     resume = False, verbose = True)
     
     # Retrieve the best parameters and their errors
-    analyse = pymultinest.Analyzer(n_params = n_parameters_one_peak, outputfiles_basename = f"Data/Nested_sampling_parameters/{survey}/one_peak/{SN_id}/")
+    analyse = pymultinest.Analyzer(n_params = n_parameters_one_peak, outputfiles_basename = f"../data/nested_sampling_results/{survey}/one_peak/{SN_id}/")
     parameter_info = analyse.get_stats()
     parameter_values = parameter_info["modes"][0]["mean"]
 
     # Calculate the reduced chi squared using the posterior
-    df = pd.read_csv(f"Data/Nested_sampling_parameters/{survey}/one_peak/{SN_id}/post_equal_weights.dat", delimiter = "\t")
+    df = pd.read_csv(f"../data/nested_sampling_results/{survey}/one_peak/{SN_id}/post_equal_weights.dat", delimiter = "\t")
     posterior_samples = df.to_numpy()
     posterior_red_chi_squared = []       
 
@@ -744,7 +744,7 @@ def second_peak_fit(time, amplitude, mean, std, amplitude_ratio, mean_ratio, std
 ### Plotting ###
 
 def plot_extrema_and_second_peak(SN_id, time_aug, flux_aug, fluxerr_aug, f1_values_aug, f2_values_aug, 
-                                 time_fit, flux_fit, f1_values_fit, f2_values_fit, extrema_f1, extrema_f2, peak_time):
+                                 time_fit, flux_fit, f1_values_fit, f2_values_fit, extrema_f1, extrema_f2, peak_time, save_name):
 
     global time, flux, fluxerr, filters, f1_values, f2_values, f1, f2
 
@@ -779,7 +779,7 @@ def plot_extrema_and_second_peak(SN_id, time_aug, flux_aug, fluxerr_aug, f1_valu
     plt.title(f"Light curve of SN {SN_id}.")
     plt.grid(alpha = 0.3)
     plt.legend()
-    # plt.savefig(f"Plots/ZTF_lightcurves_extrema_plots/ZTF_extrema_{SN_id}", dpi = 300)
+    plt.savefig(f"../plots/data_augmentation_extrema/{save_name}", dpi = 300)
     plt.show()
 
 ### Isolate peak ### 
@@ -876,20 +876,20 @@ def find_parameters_two_peaks(SN_id, survey):
     global time, flux, fluxerr, f1_values, f2_values, mean_two_peaks, std_two_peaks 
 
     # Folder in which sampling results will be stored
-    os.makedirs(f"Data/Nested_sampling_parameters/{survey}/two_peaks/{SN_id}/", exist_ok = True)
+    os.makedirs(f"../data/nested_sampling_results/{survey}/two_peaks/{SN_id}/", exist_ok = True)
     
     # Run nested sampling to find the best parameters
     pymultinest.run(loglikelihood_two_peaks, prior_two_peaks, n_parameters_two_peaks, n_live_points = 50,
-                outputfiles_basename = f"Data/Nested_sampling_parameters/{survey}/two_peaks/{SN_id}/",
+                outputfiles_basename = f"../data/nested_sampling_results/{survey}/two_peaks/{SN_id}/",
                 max_iter = 5000, resume = False, verbose = True)
     
     # Retrieve the best parameters and their errors
-    analyse = pymultinest.Analyzer(n_params = n_parameters_two_peaks, outputfiles_basename = f"Data/Nested_sampling_parameters/{survey}/two_peaks/{SN_id}/")
+    analyse = pymultinest.Analyzer(n_params = n_parameters_two_peaks, outputfiles_basename = f"../data/nested_sampling_results/{survey}/two_peaks/{SN_id}/")
     parameter_info = analyse.get_stats()
     parameter_values = parameter_info["modes"][0]["mean"]
 
     # Calculate the reduced chi squared using the posterior
-    df = pd.read_csv(f"Data/Nested_sampling_parameters/{survey}/two_peaks/{SN_id}/post_equal_weights.dat", delimiter = "\t")
+    df = pd.read_csv(f"../data/nested_sampling_results/{survey}/two_peaks/{SN_id}/post_equal_weights.dat", delimiter = "\t")
     posterior_samples = df.to_numpy()
     posterior_red_chi_squared = []       
 
@@ -969,10 +969,10 @@ def fit_light_curve(SN_id, survey):
 
         if len(one_peak_parameters) != 0:
             # Plot the results
-            np.save(f"Data/Analytical_parameters/{survey}/one_peak/{SN_id}_parameters_OP", one_peak_parameters)
+            np.save(f"../data/best-fit/{survey}/one_peak/{SN_id}_parameters_OP", one_peak_parameters)
             red_chi_squared = reduced_chi_squared_one_peak(one_peak_parameters)
 
-            with open(f"Data/Analytical_parameters/{survey}/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
+            with open(f"../data/best-fit/{survey}/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
                 writer = csv.writer(file)
                 writer.writerow([SN_id, red_chi_squared])
             
@@ -981,11 +981,11 @@ def fit_light_curve(SN_id, survey):
 
         else: 
             # Remove light curve from list because it cannot be fit
-            if SN_id in np.loadtxt(f"Data/{survey}_SNe_Ia_CSM.txt", delimiter = ",", dtype = "str"):
-                file_name = f"Data/{survey}_SNe_Ia_CSM.txt"
+            if SN_id in np.loadtxt(f"../data/processed/{survey}/{survey}_SNe_Ia_CSM.txt", delimiter = ",", dtype = "str"):
+                file_name = f"../data/processed/{survey}/{survey}_SNe_Ia_CSM.txt"
 
-            elif SN_id in np.loadtxt(f"Data/{survey}_SNe_IIn.txt", delimiter = ",", dtype = "str"):
-                file_name = f"Data/{survey}_SNe_IIn.txt"
+            elif SN_id in np.loadtxt(f"../data/processed/{survey}/{survey}_SNe_IIn.txt", delimiter = ",", dtype = "str"):
+                file_name = f"../data/processed/{survey}/{survey}_SNe_IIn.txt"
                 
             with open(file_name, "r") as file:             
                 SN_names = file.readlines()
@@ -1005,16 +1005,16 @@ def fit_light_curve(SN_id, survey):
 
         if len(one_peak_parameters) == 0:
             # Remove light curve from list because it cannot be fit
-            if SN_id in np.loadtxt(f"Data/{survey}_SNe_Ia_CSM.txt", delimiter = ",", dtype = "str"):
-                file_name = f"Data/{survey}_SNe_Ia_CSM.txt"
+            if SN_id in np.loadtxt(f"../data/processed/{survey}/{survey}_SNe_Ia_CSM.txt", delimiter = ",", dtype = "str"):
+                file_name = f"../data/processed/{survey}/{survey}_SNe_Ia_CSM.txt"
 
-            elif SN_id in np.loadtxt(f"Data/{survey}_SNe_IIn.txt", delimiter = ",", dtype = "str"):
-                file_name = f"Data/{survey}_SNe_IIn.txt"
+            elif SN_id in np.loadtxt(f"../data/processed/{survey}/{survey}_SNe_IIn.txt", delimiter = ",", dtype = "str"):
+                file_name = f"../data/processed/{survey}/{survey}_SNe_IIn.txt"
                 
             with open(file_name, "r") as file:             
                 SN_names = file.readlines()
 
-            with open(f"Data/{survey}_SNe_Ia_CSM.txt", "w") as file:
+            with open(f"../data/processed/{survey}/{survey}_SNe_Ia_CSM.txt", "w") as file:
                 for name in SN_names:
 
                     if name.strip("\n") != SN_id:
@@ -1063,9 +1063,9 @@ def fit_light_curve(SN_id, survey):
             if not ((down_bound <= list(guess_parameters)) & (list(guess_parameters) <= up_bound)):
 
                 # The one-peak light curve is a better fit
-                np.save(f"Data/Analytical_parameters/{survey}/one_peak/{SN_id}_parameters_OP", one_peak_parameters)
+                np.save(f"../data/best-fit/{survey}/one_peak/{SN_id}_parameters_OP", one_peak_parameters)
                 
-                with open(f"Data/Analytical_parameters/{survey}/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
+                with open(f"../data/best-fit/{survey}/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
                     writer = csv.writer(file)
                     writer.writerow([SN_id, red_chi_squared_OP])
 
@@ -1086,9 +1086,9 @@ def fit_light_curve(SN_id, survey):
 
                 except ValueError:        
                     # The one-peak light curve is a better fit
-                    np.save(f"Data/Analytical_parameters/{survey}/one_peak/{SN_id}_parameters_OP", one_peak_parameters)
+                    np.save(f"../data/best-fit/{survey}/one_peak/{SN_id}_parameters_OP", one_peak_parameters)
 
-                    with open(f"Data/Analytical_parameters/{survey}/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
+                    with open(f"../data/best-fit/{survey}/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
                         writer = csv.writer(file)
                         writer.writerow([SN_id, red_chi_squared_OP])
 
@@ -1109,9 +1109,9 @@ def fit_light_curve(SN_id, survey):
 
                 if len(residual_parameters) == 0:
                     # The one-peak light curve is a better fit
-                    np.save(f"Data/Analytical_parameters/{survey}/one_peak/{SN_id}_parameters_OP", one_peak_parameters)
+                    np.save(f"../data/best-fit/{survey}/one_peak/{SN_id}_parameters_OP", one_peak_parameters)
 
-                    with open(f"Data/Analytical_parameters/{survey}/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
+                    with open(f"../data/best-fit/{survey}/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
                         writer = csv.writer(file)
                         writer.writerow([SN_id, red_chi_squared_OP])
 
@@ -1138,9 +1138,9 @@ def fit_light_curve(SN_id, survey):
 
         if np.abs(red_chi_squared_OP - 1) < np.abs(red_chi_squared_TP - 1):
             # The one-peak light curve is a better fit
-            np.save(f"Data/Analytical_parameters/{survey}/one_peak/{SN_id}_parameters_OP", one_peak_parameters)
+            np.save(f"../data/best-fit/{survey}/one_peak/{SN_id}_parameters_OP", one_peak_parameters)
             
-            with open(f"Data/Analytical_parameters/{survey}/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
+            with open(f"../data/best-fit/{survey}/one_peak/red_chi_squared_OP.csv", "a", newline = "") as file:
                 writer = csv.writer(file)
                 writer.writerow([SN_id, red_chi_squared_OP])
 
@@ -1150,12 +1150,12 @@ def fit_light_curve(SN_id, survey):
 
         else:
             # The two-peaks light curve is a better fit
-            np.save(f"Data/Analytical_parameters/{survey}/two_peaks/{SN_id}_parameters_TP", two_peaks_parameters) 
+            np.save(f"../data/best-fit/{survey}/two_peaks/{SN_id}_parameters_TP", two_peaks_parameters) 
 
             # Still save one-peak parameters for further analysis
-            np.save(f"Data/Analytical_parameters/{survey}/one_peak/{SN_id}_parameters_OP", one_peak_parameters)
+            np.save(f"../data/best-fit/{survey}/one_peak/{SN_id}_parameters_OP", one_peak_parameters)
 
-            with open(f"Data/Analytical_parameters/{survey}/two_peaks/red_chi_squared_TP.csv", "a", newline = "") as file:
+            with open(f"../data/best-fit/{survey}/two_peaks/red_chi_squared_TP.csv", "a", newline = "") as file:
                 writer = csv.writer(file)
                 writer.writerow([SN_id, red_chi_squared_TP])
 
@@ -1168,12 +1168,12 @@ def fit_light_curve(SN_id, survey):
 if __name__ == '__main__':
     
     survey = "ZTF"
-    for SN_id in ztf_names:
+    for SN_id in ztf_names[:1]:
         
         fit_light_curve(SN_id, survey)
 
     survey = "ATLAS"
-    for SN_id in atlas_names:
+    for SN_id in atlas_names[:1]:
 
         fit_light_curve(SN_id, survey)
 
