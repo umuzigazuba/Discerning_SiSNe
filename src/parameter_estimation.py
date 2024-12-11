@@ -6,16 +6,16 @@ from sklearn.gaussian_process.kernels import (RBF, Matern,
       WhiteKernel, ConstantKernel as C)
 import pymultinest
 
+from scipy.stats import truncnorm
+from scipy.signal import find_peaks, peak_prominences, peak_widths
+from scipy.optimize import curve_fit
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import multiprocessing
 import os
 import csv
-
-from scipy.stats import truncnorm
-from scipy.signal import find_peaks, peak_prominences, peak_widths
-from scipy.optimize import curve_fit
 
 plt.rcParams["text.usetex"] = True
 

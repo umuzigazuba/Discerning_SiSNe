@@ -1,6 +1,6 @@
 # %%
 
-from data_processing import ztf_load_data, atlas_load_data, atlas_micro_flux_to_magnitude
+from data_processing import ztf_load_data, atlas_load_data
 from parameter_estimation import light_curve_one_peak, light_curve_two_peaks
 
 from sklearn.preprocessing import StandardScaler

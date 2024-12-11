@@ -5,9 +5,6 @@ from parameter_estimation import light_curve_one_peak, light_curve_two_peaks
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.integrate import quad
-import seaborn as sn
-import pandas as pd
 import os
 import csv
 
