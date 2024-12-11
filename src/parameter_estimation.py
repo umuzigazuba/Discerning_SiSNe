@@ -1,21 +1,28 @@
 # %%
-from data_processing import ztf_load_data, atlas_load_data
 
-import fulu
-from sklearn.gaussian_process.kernels import (RBF, Matern, 
-      WhiteKernel, ConstantKernel as C)
-import pymultinest
+__ImportError__ = "One or more required packages are not installed. See requirements.txt."
 
-from scipy.stats import truncnorm
-from scipy.signal import find_peaks, peak_prominences, peak_widths
-from scipy.optimize import curve_fit
+try:
+    from data_processing import ztf_load_data, atlas_load_data
 
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-import multiprocessing
-import os
-import csv
+    import fulu
+    from sklearn.gaussian_process.kernels import (RBF, Matern, 
+        WhiteKernel, ConstantKernel as C)
+    import pymultinest
+
+    from scipy.stats import truncnorm
+    from scipy.signal import find_peaks, peak_prominences, peak_widths
+    from scipy.optimize import curve_fit
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import pandas as pd
+    import multiprocessing
+    import os
+    import csv
+
+except ImportError:
+    raise ImportError(__ImportError__)
 
 plt.rcParams["text.usetex"] = True
 

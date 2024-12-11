@@ -1,12 +1,18 @@
 # %%
 
-from data_processing import ztf_load_data, atlas_load_data, atlas_micro_flux_to_magnitude
-from parameter_estimation import light_curve_one_peak, light_curve_two_peaks
+__ImportError__ = "One or more required packages are not installed. See requirements.txt."
 
-import matplotlib.pyplot as plt
-import numpy as np
-import os
-import csv
+try:
+    from data_processing import ztf_load_data, atlas_load_data, atlas_micro_flux_to_magnitude
+    from parameter_estimation import light_curve_one_peak, light_curve_two_peaks
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import os
+    import csv
+
+except ImportError:
+    raise ImportError(__ImportError__)
 
 plt.rcParams["text.usetex"] = True
 

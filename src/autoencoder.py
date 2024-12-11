@@ -1,15 +1,22 @@
 # %%
-from kmeans_clustering import plot_PCA_with_clusters, number_of_clusters, plot_SN_collection
 
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.cluster import KMeans
+__ImportError__ = "One or more required packages are not installed. See requirements.txt."
 
-import torch
-from torch import nn
-from torch.utils.data import DataLoader, TensorDataset
+try:
+    from kmeans_clustering import plot_PCA_with_clusters, number_of_clusters, plot_SN_collection
 
-import matplotlib.pyplot as plt
-import numpy as np
+    from sklearn.preprocessing import MinMaxScaler
+    from sklearn.cluster import KMeans
+
+    import torch
+    from torch import nn
+    from torch.utils.data import DataLoader, TensorDataset
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+except ImportError:
+    raise ImportError(__ImportError__)
 
 torch.manual_seed(2804)
 np.random.seed(2804)

@@ -1,17 +1,23 @@
 # %% 
 
-import astropy.units as u
-from astropy.time import Time
-from astropy.coordinates import EarthLocation, SkyCoord, AltAz
+__ImportError__ = "One or more required packages are not installed. See requirements.txt."
 
-from dustmaps.config import config
-config['data_dir']= "../utils/"
-from dustmaps.sfd import SFDQuery
-from extinction import fm07, remove
+try:
+    import astropy.units as u
+    from astropy.time import Time
+    from astropy.coordinates import EarthLocation, SkyCoord, AltAz
 
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
+    from dustmaps.config import config
+    config['data_dir']= "../utils/"
+    from dustmaps.sfd import SFDQuery
+    from extinction import fm07, remove
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import pandas as pd
+
+except ImportError:
+    raise ImportError(__ImportError__)
 
 plt.rcParams["text.usetex"] = True
 

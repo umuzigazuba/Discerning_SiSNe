@@ -1,17 +1,23 @@
 # %%
 
-from data_processing import ztf_load_data, atlas_load_data
-from parameter_estimation import light_curve_one_peak, light_curve_two_peaks
+__ImportError__ = "One or more required packages are not installed. See requirements.txt."
 
-from sklearn.preprocessing import StandardScaler
-from sklearn import decomposition, metrics
-from sklearn.cluster import KMeans
-from sklearn.model_selection import ParameterGrid
+try:
+    from data_processing import ztf_load_data, atlas_load_data
+    from parameter_estimation import light_curve_one_peak, light_curve_two_peaks
 
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-import numpy as np
-import pandas as pd
+    from sklearn.preprocessing import StandardScaler
+    from sklearn import decomposition, metrics
+    from sklearn.cluster import KMeans
+    from sklearn.model_selection import ParameterGrid
+
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
+    import numpy as np
+    import pandas as pd
+
+except ImportError:
+    raise ImportError(__ImportError__)
 
 plt.rcParams["text.usetex"] = True
 plt.rcParams['axes.axisbelow'] = True
