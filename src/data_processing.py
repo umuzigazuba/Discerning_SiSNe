@@ -197,7 +197,7 @@ def ztf_micro_flux_to_magnitude(flux, fluxerr, zero_point):
 def ztf_load_data(ztf_name):
 
     """ 
-    Load the processed ZTFlight curve data 
+    Load the processed ZTF light curve data 
 
     Parameters:
         ztf_name (str): The internal ZTF name of the SN 
