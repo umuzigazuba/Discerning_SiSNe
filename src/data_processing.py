@@ -24,6 +24,7 @@ colours = {"blue":"#0077BB", "orange": "#EE7733", "green":"#296529", "purple":"#
 ### ZTF ###
 
 def ztf_retrieve_data(ztf_name):
+
     """ 
     Retrieve the raw data for a given ZTF SN
 
@@ -45,6 +46,7 @@ def ztf_retrieve_data(ztf_name):
     return ztf_data
 
 def calculate_airmass(ra, dec, time):
+
     """ 
     Calculates the airmass from the Palomar telescope in the direction of the SN 
     Used to determine the necessary quality cuts
