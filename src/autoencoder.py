@@ -38,24 +38,29 @@ scaler = MinMaxScaler()
 
 class AutoEncoder(nn.Module):
 
+    """
+    Implementation of an autoencoder
+
+    Parameters: 
+        n_input (int): Number of nodes in the input layer
+        n_nodes (list): List of number of nodes in each hidden layer
+    """
+
     def __init__(self, n_input, n_nodes):
 
         # Initialize the attributes from the parent class (nn.Module)
         super().__init__() 
 
-        # self.encoder = nn.Sequential(nn.Dropout(0.2))
         self.encoder = nn.Sequential() 
         self.encoder.append(nn.Linear(n_input, n_nodes[0]))
         self.encoder.append(nn.ReLU())
         for idx in range(len(n_nodes) - 2):
-            # self.encoder.append(nn.Dropout(0.2))
             self.encoder.append(nn.Linear(n_nodes[idx], n_nodes[idx + 1]))
             self.encoder.append(nn.ReLU())
         self.encoder.append(nn.Linear(n_nodes[-2], n_nodes[-1]))
 
         self.decoder = nn.Sequential() 
         for idx in range(len(n_nodes) - 1, 0, -1):
-            # self.encoder.append(nn.Dropout(0.2))
             self.decoder.append(nn.Linear(n_nodes[idx], n_nodes[idx - 1]))
             self.decoder.append(nn.ReLU())
         self.decoder.append(nn.Linear(n_nodes[0], n_input))
@@ -76,6 +81,16 @@ class AutoEncoder(nn.Module):
         return decoded
 
 class DeepEmbeddedClustering(nn.Module):
+
+    """
+    Implementation of the Deep Embedded Clustering algorithm
+    Combines autoencoders and K-Means clustering 
+
+    Parameters: 
+        autoencoder (nn.Module): Autoencoder network
+        cluster_centres (list): Coordinates of the cluster centres
+        alpha (float): Degree's of freedom Student-t distribution
+    """
 
     def __init__(self, autoencoder, cluster_centres, alpha):
 
@@ -210,9 +225,6 @@ best_number = number_of_clusters(latent_representation, f"{survey}_one-peak_mode
 kmeans = KMeans(n_clusters = best_number, random_state = 2804)
 predictions = kmeans.fit_predict(latent_representation)
 
-print(len(np.where(kmeans.labels_ == 0)[0]))
-print(len(np.where(kmeans.labels_ == 1)[0]))
-
 plot_PCA_with_clusters(latent_representation, SN_labels, kmeans, best_number, [1]*len(number_of_peaks), f"{survey}_one-peak_model_fit_parameters_in_the_latent_space")
 
 # %%
@@ -260,10 +272,6 @@ latent_representation_names = ["latent_dimension_1", "latent_dimension_2", "late
 best_number = number_of_clusters(latent_representation, f"{survey}_light_curve_properties_in_the_latent_space")
 kmeans = KMeans(n_clusters = best_number, random_state = 2804)
 predictions = kmeans.fit_predict(latent_representation)
-
-print(len(np.where(kmeans.labels_ == 0)[0]))
-print(len(np.where(kmeans.labels_ == 1)[0]))
-print(len(np.where(kmeans.labels_ == 2)[0]))
 
 plot_PCA_with_clusters(latent_representation, SN_labels, kmeans, best_number, number_of_peaks, f"{survey}_light_curve_properties_in_the_latent_space")
 
@@ -313,20 +321,10 @@ best_number = number_of_clusters(latent_representation, f"{survey}_combined_data
 kmeans = KMeans(n_clusters = best_number, random_state = 2804)
 predictions = kmeans.fit_predict(latent_representation)
 
-print(len(np.where(kmeans.labels_ == 0)[0]))
-print(len(np.where(kmeans.labels_ == 1)[0]))
-
 plot_PCA_with_clusters(latent_representation, SN_labels, kmeans, best_number, [1] * len(number_of_peaks),  f"{survey}_combined_dataset_in_the_latent_space")
 
 # %%
 
-best_number = 2
-kmeans = KMeans(n_clusters = best_number, random_state = 2804)
-predictions = kmeans.fit_predict(latent_representation)
-
-plot_PCA_with_clusters(latent_representation, SN_labels, kmeans, best_number, [1] * len(number_of_peaks),  f"{survey}_combined_dataset_in_the_latent_space")
-
-# %%
 # Initialize DEC
 DEC = DeepEmbeddedClustering(autoencoder, cluster_centres = None, alpha = 1)
 
@@ -400,11 +398,6 @@ print(fitting_parameters_one_peak[:, 0][cluster_2], len(fitting_parameters_one_p
 print(SN_labels[cluster_0], len(SN_labels[cluster_0]))
 print(SN_labels[cluster_1], len(SN_labels[cluster_1]))
 print(SN_labels[cluster_2], len(SN_labels[cluster_2]))
-
-# %%
-'ZTF23abgnvya' 'ZTF23aaynmrz'
-# %%
-# %%
 
 # %%
 

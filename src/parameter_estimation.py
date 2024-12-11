@@ -911,7 +911,7 @@ def plot_data_augmentation_extrema(sn_name, time_aug, flux_aug, fluxerr_aug, f1_
         plt.show()
 
     else: 
-        plt.savefig(f"../plots/data_augmentation_extrema/{save_name}", dpi = 300)
+        plt.savefig(f"../plots/data_augmentation_extrema/{save_name}", dpi = 300, bbox_inches = "tight")
         plt.close()
     
 def plot_best_fit_light_curve(sn_name, red_chi_squared, time_fit, flux_fit, f1_values_fit, f2_values_fit, peak_time, save_name = False):
@@ -951,7 +951,7 @@ def plot_best_fit_light_curve(sn_name, red_chi_squared, time_fit, flux_fit, f1_v
         plt.show()
 
     else: 
-        plt.savefig(f"../plots/best-fit/{save_name}", dpi = 300)
+        plt.savefig(f"../plots/best-fit/{save_name}", dpi = 300, bbox_inches = "tight")
         plt.close()
 
 def fit_light_curve(sn_name, survey):

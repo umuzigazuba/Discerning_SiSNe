@@ -248,7 +248,7 @@ def ztf_plot_data(ztf_name, time, flux, fluxerr, filters, save_fig = False):
     plt.grid(alpha = 0.3)
     plt.legend()
     if save_fig:
-        plt.savefig(f"../plots/processed/ZTF/Data_points_{ztf_name}", dpi = 300)
+        plt.savefig(f"../plots/processed/ZTF/Data_points_{ztf_name}", dpi = 300, bbox_inches = "tight")
         plt.close()
     else:
         plt.show()
@@ -386,7 +386,7 @@ def atlas_plot_data(atlas_name, time, flux, fluxerr, filters, save_fig = False):
     plt.grid(alpha = 0.3)
     plt.legend()
     if save_fig:
-        plt.savefig(f"../plots/processed/ATLAS/Data_points_{atlas_name}", dpi = 300)
+        plt.savefig(f"../plots/processed/ATLAS/Data_points_{atlas_name}", dpi = 300, bbox_inches = "tight")
         plt.close()
     else:
         plt.show()
