@@ -1,0 +1,11 @@
+numpy
+matplotlib
+pandas
+sklearn
+scipy
+torch
+astropy
+extinction
+dustmaps
+fulu
+pymultinest
