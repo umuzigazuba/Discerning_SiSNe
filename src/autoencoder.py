@@ -3,7 +3,7 @@
 __ImportError__ = "One or more required packages are not installed. See requirements.txt."
 
 try:
-    from kmeans_clustering import plot_PCA_with_clusters, silhouette_score, load_best_fit_light_curves, plot_light_curve_template
+    from kmeans_clustering import plot_PCA_with_clusters, silhouette_score, load_best_fit_light_curves, plot_light_curve_template, save_clustering_results
 
     from sklearn.preprocessing import MinMaxScaler
     from sklearn.cluster import KMeans
@@ -42,8 +42,8 @@ fitting_parameters_one_peak = np.load(f"../data/machine_learning/{survey}/fittin
 global_parameters = np.load(f"../data/machine_learning/{survey}/global_parameters.npy")
 global_parameters_one_peak = np.load(f"../data/machine_learning/{survey}/global_parameters_one_peak.npy")
 number_of_peaks = np.load(f"../data/machine_learning/{survey}/number_of_peaks.npy")
-SN_labels = np.load(f"../data/machine_learning/{survey}/SN_labels.npy")
-SN_labels_color = np.load(f"../data/machine_learning/{survey}/SN_labels_color.npy")
+sn_labels = np.load(f"../data/machine_learning/{survey}/sn_labels.npy")
+sn_labels_color = np.load(f"../data/machine_learning/{survey}/sn_labels_color.npy")
 
 scaler = MinMaxScaler()
 
@@ -187,7 +187,7 @@ best_number = silhouette_score(latent_representation, f"{survey}_model_fit_param
 kmeans = KMeans(n_clusters = best_number, random_state = 2804)
 predictions = kmeans.fit_predict(latent_representation)
 
-plot_PCA_with_clusters(latent_representation, SN_labels, kmeans, best_number, number_of_peaks, f"{survey}_model_fit_parameters_in_the_latent_space")
+plot_PCA_with_clusters(latent_representation, sn_labels, kmeans, best_number, number_of_peaks, f"{survey}_model_fit_parameters_in_the_latent_space")
 
 # %%
 
@@ -234,7 +234,7 @@ best_number = silhouette_score(latent_representation, f"{survey}_one-peak_model_
 kmeans = KMeans(n_clusters = best_number, random_state = 2804)
 predictions = kmeans.fit_predict(latent_representation)
 
-plot_PCA_with_clusters(latent_representation, SN_labels, kmeans, best_number, [1]*len(number_of_peaks), f"{survey}_one-peak_model_fit_parameters_in_the_latent_space")
+plot_PCA_with_clusters(latent_representation, sn_labels, kmeans, best_number, [1]*len(number_of_peaks), f"{survey}_one-peak_model_fit_parameters_in_the_latent_space")
 
 # %%
 
@@ -280,7 +280,7 @@ best_number = silhouette_score(latent_representation, f"{survey}_light_curve_pro
 kmeans = KMeans(n_clusters = best_number, random_state = 2804)
 predictions = kmeans.fit_predict(latent_representation)
 
-plot_PCA_with_clusters(latent_representation, SN_labels, kmeans, best_number, number_of_peaks, f"{survey}_light_curve_properties_in_the_latent_space")
+plot_PCA_with_clusters(latent_representation, sn_labels, kmeans, best_number, number_of_peaks, f"{survey}_light_curve_properties_in_the_latent_space")
 
 # %%
 
@@ -326,12 +326,13 @@ best_number = silhouette_score(latent_representation, f"{survey}_combined_one-pe
 kmeans = KMeans(n_clusters = best_number, random_state = 2804)
 predictions = kmeans.fit_predict(latent_representation)
 
-plot_PCA_with_clusters(latent_representation, SN_labels, kmeans, best_number, [1] * len(number_of_peaks),  f"{survey}_combined_one-peak_dataset_in_the_latent_space")
+plot_PCA_with_clusters(latent_representation, sn_labels, kmeans, best_number, [1] * len(number_of_peaks),  f"{survey}_combined_one-peak_dataset_in_the_latent_space")
 
 # %%
 
 sample_times_f1, sample_fluxes_f1, sample_times_f2, sample_fluxes_f2 = load_best_fit_light_curves(survey, fitting_parameters_one_peak, [1] * len(number_of_peaks))
-plot_light_curve_template(kmeans, best_number, sample_times_f1, sample_fluxes_f1, f1, f"{survey}_combined_one-peak_dataset_in_the_PC_space")
+plot_light_curve_template(kmeans, best_number, sample_times_f1, sample_fluxes_f1, f1, f"{survey}_combined_one-peak_dataset_in_the_latent_space")
+save_clustering_results(kmeans, best_number, fitting_parameters_one_peak[:, 0], sn_labels, f"{survey}_combined_one-peak_dataset_in_the_latent_space")
 
 # %%
 
@@ -391,19 +392,6 @@ kmeans = KMeans(n_clusters = best_number, random_state = 2804)
 predictions = kmeans.fit_predict(latent_representation)
 kmeans.cluster_centers_ = kmeans.cluster_centers_.astype(np.float64)
 
-plot_PCA_with_clusters(latent_representation, SN_labels, kmeans, 2, [1] * len(number_of_peaks), f"{survey}_SNe_using_an_autoencoder")
+plot_PCA_with_clusters(latent_representation, sn_labels, kmeans, 2, [1] * len(number_of_peaks), f"{survey}_SNe_using_an_autoencoder")
 
 # %%
-
-cluster_0 = np.where(predictions == 0)
-cluster_1 = np.where(predictions == 1)
-cluster_2 = np.where(predictions == 2)
-
-print(fitting_parameters_one_peak[:, 0][cluster_0], len(fitting_parameters_one_peak[:, 0][cluster_0]))
-print(fitting_parameters_one_peak[:, 0][cluster_1], len(fitting_parameters_one_peak[:, 0][cluster_1]))
-print(fitting_parameters_one_peak[:, 0][cluster_2], len(fitting_parameters_one_peak[:, 0][cluster_2]))
-
-print(SN_labels[cluster_0], len(SN_labels[cluster_0]))
-print(SN_labels[cluster_1], len(SN_labels[cluster_1]))
-print(SN_labels[cluster_2], len(SN_labels[cluster_2]))
-

@@ -71,7 +71,7 @@ def plot_PCA_with_clusters(parameter_values, sn_type, kmeans, best_number, numbe
        kmeans (object): Kmeans model
        best_number (int): Best number of clusters the parameter space can be divided into
        number_of_peaks (numpy.ndarray): Number of peaks of the used model 
-       save_fig (boolean or str): If str, name of the directory where the plot is saved, if boolean, show the plot
+       save_fig (boolean or str): If str, name of the file where the plot is saved, if boolean, show the plot
 
     Outputs: 
         None
@@ -169,7 +169,7 @@ def silhouette_score(parameter_values, save_fig = False):
 
     Parameters: 
         parameter_values (numpy.ndarray): Parameters describing the SNe
-        save_fig (boolean or str): If str, name of the directory where the plot is saved, if boolean, show the plot
+        save_fig (boolean or str): If str, name of the file where the plot is saved, if boolean, show the plot
 
     Outputs:
         best_number (int): Best number of clusters
@@ -222,7 +222,7 @@ def loss_of_information(parameter_values, percentage, save_fig = False):
     Parameters: 
         parameter_values (numpy.ndarray): Parameters describing the SNe
         percentage (float): The percentage of information that needs to remain
-        save_fig (boolean or str): If str, name of the directory where the plot is saved, if boolean, show the plot
+        save_fig (boolean or str): If str, name of the file where the plot is saved, if boolean, show the plot
 
     Outputs:
         best_dimensionality (int): Best dimensionality
@@ -248,7 +248,7 @@ def loss_of_information(parameter_values, percentage, save_fig = False):
     if type(save_fig) == str:
         name = save_fig.replace("_", " ")
         plt.title(f"Cumulative variance of the {name}.")
-        plt.savefig(f"../plots/machine_learning/cummulative_variance_{save_fig}", dpi = 300, bbox_inches = "tight")
+        plt.savefig(f"../plots/machine_learning/Cummulative_variance_{save_fig}", dpi = 300, bbox_inches = "tight")
         plt.show()
 
     else:
@@ -259,6 +259,32 @@ def loss_of_information(parameter_values, percentage, save_fig = False):
     best_dimensionality = possible_dimensions[best_dimensionality_idx]
 
     return best_dimensionality
+
+# %%
+
+def save_clustering_results(kmeans, best_number, sn_names, sn_labels, save_name): 
+
+    """
+    Save the clusters found by the clustering algorithm and the SNe (name and type) belonging to each cluster
+
+    Parameters: 
+        kmeans (object): Kmeans model
+        best_number (int): Best number of clusters the parameter space can be divided into
+        sn_names (numpy.ndarray): Names of the SNe in the sample
+        sn_labels (list): SN type of the SNe in the sample
+        save_name (str): File name
+    """
+
+    with open(f"../data/machine_learning/Clustering_results_{save_name}.txt", "w") as file:
+
+        for cluster_idx in range(best_number):
+
+            cluster = np.where(kmeans.labels_ == cluster_idx)
+            file.write(f"\n \n The {len(cluster[0])} SNe belonging to cluster {cluster_idx + 1}: \n")
+
+            for sn_idx in range(len(cluster[0])): 
+
+                file.write(f"{sn_names[cluster][sn_idx]}, {sn_labels[cluster][sn_idx]} \n")
 
 # %%
 
@@ -350,24 +376,24 @@ def plot_light_curve_template(kmeans, best_number, sample_times, sample_fluxes, 
         sample_times (numpy.ndarray): Modified Julian Date of the best-fit data points in a certain filter
         sample_fluxes (numpy.ndarray): Differential flux of the best-fit data points in a certain fitler
         filter (str): Filter used to make the observations
-        save_fig (boolean or str): If str, name of the directory where the plot is saved, if boolean, show the plot
+        save_fig (boolean or str): If str, name of the file where the plot is saved, if boolean, show the plot
 
     Outputs:
         None
     """
 
     cluster_colours = {"green":"#296529", "purple":"#AA3377", "brown": "#65301A", "cyan": "#33BBEE"}
-    for idx in range(best_number): 
+    for cluster_idx in range(best_number): 
 
-        cluster_idx = np.where(kmeans.labels_ == idx)
+        cluster = np.where(kmeans.labels_ == cluster_idx)
 
-        mean_time = np.mean(np.array(sample_times)[cluster_idx], axis = 0)
+        mean_time = np.mean(np.array(sample_times)[cluster], axis = 0)
 
-        mean_flux = np.mean(np.array(sample_fluxes)[cluster_idx], axis = 0)
-        std_flux = np.std(np.array(sample_fluxes)[cluster_idx], axis = 0)
+        mean_flux = np.mean(np.array(sample_fluxes)[cluster], axis = 0)
+        std_flux = np.std(np.array(sample_fluxes)[cluster], axis = 0)
 
-        plt.plot(mean_time, mean_flux, linewidth = 2, color = list(cluster_colours.values())[idx], label = f"K-means cluster {idx + 1}")
-        plt.fill_between(mean_time, mean_flux - std_flux, mean_flux + std_flux, color = list(cluster_colours.values())[idx], alpha = 0.15)
+        plt.plot(mean_time, mean_flux, linewidth = 2, color = list(cluster_colours.values())[cluster_idx], label = f"K-means cluster {cluster_idx + 1}")
+        plt.fill_between(mean_time, mean_flux - std_flux, mean_flux + std_flux, color = list(cluster_colours.values())[cluster_idx], alpha = 0.15)
  
     plt.xlabel("Time since peak (days)", fontsize = 13)
     plt.ylabel("Normalised flux", fontsize = 13)
@@ -401,8 +427,8 @@ if __name__ == '__main__':
     global_parameters = np.load(f"../data/machine_learning/{survey}/global_parameters.npy")
     global_parameters_one_peak = np.load(f"../data/machine_learning/{survey}/global_parameters_one_peak.npy")
     number_of_peaks = np.load(f"../data/machine_learning/{survey}/number_of_peaks.npy")
-    sn_labels = np.load(f"../data/machine_learning/{survey}/SN_labels.npy")
-    sn_labels_color = np.load(f"../data/machine_learning/{survey}/SN_labels_color.npy")
+    sn_labels = np.load(f"../data/machine_learning/{survey}/sn_labels.npy")
+    sn_labels_color = np.load(f"../data/machine_learning/{survey}/sn_labels_color.npy")
     
     scaler = StandardScaler()
 
@@ -501,23 +527,6 @@ if __name__ == '__main__':
 
     sample_times_f1, sample_fluxes_f1, sample_times_f2, sample_fluxes_f2 = load_best_fit_light_curves(survey, fitting_parameters_one_peak, [1] * len(number_of_peaks))
     plot_light_curve_template(kmeans, best_number, sample_times_f1, sample_fluxes_f1, f1, f"{survey}_combined_one-peak_dataset_in_the_PC_space")
+    save_clustering_results(kmeans, best_number, fitting_parameters_one_peak[:, 0], sn_labels, f"{survey}_combined_one-peak_dataset_in_the_PC_space")
 
-    # %%
-
-    cluster_0 = np.where(kmeans.labels_ == 0)
-    cluster_1 = np.where(kmeans.labels_ == 1)
-    cluster_2 = np.where(kmeans.labels_ == 2)
-
-    # print(fitting_parameters[one_peak, 0][0][cluster_0])
-    # print(fitting_parameters[one_peak, 0][0][cluster_1])
-
-    print(fitting_parameters_one_peak[:, 0][cluster_0], len(fitting_parameters_one_peak[:, 0][cluster_0]))
-    print(fitting_parameters_one_peak[:, 0][cluster_1], len(fitting_parameters_one_peak[:, 0][cluster_1]))
-    print(fitting_parameters_one_peak[:, 0][cluster_2], len(fitting_parameters_one_peak[:, 0][cluster_2]))
-
-    # print(fitting_parameters[:, 0][cluster_0])
-    # print(fitting_parameters[:, 0][cluster_1])
-        
-    print(sn_labels[cluster_0])
-    print(sn_labels[cluster_1])
-    print(sn_labels[cluster_2])
+# %%
