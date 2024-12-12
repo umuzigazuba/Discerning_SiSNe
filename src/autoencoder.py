@@ -3,7 +3,7 @@
 __ImportError__ = "One or more required packages are not installed. See requirements.txt."
 
 try:
-    from kmeans_clustering import plot_PCA_with_clusters, silhouette_score, load_best_fit_light_curves, plot_light_curve_template, save_clustering_results
+    from principal_component_analysis import plot_PCA_with_clusters, silhouette_score, load_best_fit_light_curves, plot_light_curve_template, save_clustering_results
 
     from sklearn.preprocessing import MinMaxScaler
     from sklearn.cluster import KMeans
