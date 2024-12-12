@@ -63,7 +63,7 @@ def important_feature_selection(parameter_values, sn_type, parameter_names):
 def plot_PCA_with_clusters(parameter_values, sn_type, kmeans, best_number, number_of_peaks, save_fig = False):
 
     """
-    Plot the SN parameter space and the clusters found by the KMeans aglorithm in two-dimensions using PCA
+    Plot the SN parameter space and the clusters found by the KMeans aglorithm in two dimensions using PCA
 
     Parameters: 
        parameter_values (numpy.ndarray): Parameters describing the SNe
