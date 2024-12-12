@@ -262,32 +262,46 @@ def loss_of_information(parameter_values, percentage, save_fig = False):
 
 # %%
 
-def light_curve_template(survey, fitting_parameters, number_of_peaks):
+def load_best_fit_light_curves(survey, parameter_values, number_of_peaks):
 
-    collection_times_f1 = []
-    collection_fluxes_f1 = []
+    """
+    Load the best-fit light curves for a set of SNe and their best-fit parameters
 
-    collection_times_f2 = []
-    collection_fluxes_f2 = []
+    Parameters:
+        survey (str): Survey that observed the SNe 
+        parameter_values (numpy.ndarray): The best-fit parameter values 
+        number_of_peaks (list): The number of peaks of the model that best fit the SN light curves
 
-    for idx in range(len(fitting_parameters)):
+    Outputs:
+        sample_times_f1 (numpy.ndarray): Modified Julian Date of the best-fit data points in the f1 filter
+        sample_fluxes_f1 (numpy.ndarray): Differential flux of the best-fit data points in the f1 fitler
+        sample_times_f2 (numpy.ndarray): Modified Julian Date of the best-fit data points in the f2 filter
+        sample_fluxes_f2 (numpy.ndarray): Differential flux of the best-fit data points in the f2 fitler
+    """
+
+    sample_times_f1 = []
+    sample_fluxes_f1 = []
+
+    sample_times_f2 = []
+    sample_fluxes_f2 = []
+
+    for idx in range(len(parameter_values)):
     
         if survey == "ZTF":
             f1 = "r"
-            f2 = "g"
 
-            time, flux, _, filters = ztf_load_data(fitting_parameters[idx, 0])
+            # Load the data
+            time, flux, _, filters = ztf_load_data(parameter_values[idx, 0])
 
         if survey == "ATLAS":
             f1 = "o"
-            f2 = "c"
 
             # Load the data
-            time, flux, _, filters = atlas_load_data(fitting_parameters[idx, 0])
+            time, flux, _, filters = atlas_load_data(parameter_values[idx, 0])
 
         f1_values = np.where(filters == f1)
 
-        # Shift the light curve so that the main peak is at time = 0 MJD
+        # Shift the light curve so that the main peak is at 0 MJD
         peak_main_idx = np.argmax(flux[f1_values])
         peak_time = np.copy(time[peak_main_idx])
         peak_flux = np.copy(flux[peak_main_idx])
@@ -295,52 +309,101 @@ def light_curve_template(survey, fitting_parameters, number_of_peaks):
         time -= peak_time
 
         amount_fit = 500
-        time_fit = np.concatenate((np.linspace(-150, 500, amount_fit), np.linspace(-150, 500, amount_fit)))
+        time_fit = np.concatenate((np.linspace(-150, 400, amount_fit), np.linspace(-150, 400, amount_fit)))
         f1_values_fit = np.arange(amount_fit)
         f2_values_fit = np.arange(amount_fit) + amount_fit
 
         if number_of_peaks[idx] == 1:
-            flux_fit = light_curve_one_peak(time_fit, fitting_parameters[idx, 1:15], peak_flux, f1_values_fit, f2_values_fit)
+            flux_fit = light_curve_one_peak(time_fit, parameter_values[idx, 1:15], peak_flux, f1_values_fit, f2_values_fit)
 
         elif number_of_peaks[idx] == 2:
-            flux_fit = light_curve_two_peaks(time_fit, fitting_parameters[idx, 1:], peak_flux, f1_values_fit, f2_values_fit)
+            flux_fit = light_curve_two_peaks(time_fit, parameter_values[idx, 1:], peak_flux, f1_values_fit, f2_values_fit)
 
         time_fit += peak_time
 
+        # Shift the best-fit light curve so that its main peak is at 0 MJD
         peak_main_idx_f1 = np.argmax(flux_fit[f1_values_fit])
         time_fit_f1 = time_fit[f1_values_fit] - time_fit[peak_main_idx_f1]
-        collection_times_f1.append(np.array(time_fit_f1))
+        sample_times_f1.append(np.array(time_fit_f1))
 
         peak_main_idx_f2 = np.argmax(flux_fit[f1_values_fit])
         time_fit_f2 = time_fit[f2_values_fit] - time_fit[peak_main_idx_f2]
-        collection_times_f2.append(np.array(time_fit_f2))
+        sample_times_f2.append(np.array(time_fit_f2))
 
         # Reshape the data so that the flux is between 0 and 1 micro Jy
-        # flux_fit_min_f1 = np.copy(np.min(flux_fit[f1_values_fit]))
-        flux_fit_max_f1 = np.copy(np.max(flux_fit[f1_values_fit]))
-        flux_fit_f1 = (flux_fit[f1_values_fit]) / flux_fit_max_f1
-        collection_fluxes_f1.append(np.array(flux_fit_f1))
+        flux_fit_f1 = flux_fit[f1_values_fit] / flux_fit[peak_main_idx_f1]
+        sample_fluxes_f1.append(np.array(flux_fit_f1))
 
-        # flux_fit_min_f2 = np.copy(np.min(flux_fit[f2_values_fit]))
-        flux_fit_max_f2 = np.copy(np.max(flux_fit[f2_values_fit]))
-        flux_fit_f2 = (flux_fit[f2_values_fit]) / flux_fit_max_f2
-        collection_fluxes_f2.append(np.array(flux_fit_f2))
+        flux_fit_f2 = flux_fit[f2_values_fit] / flux_fit[peak_main_idx_f2]
+        sample_fluxes_f2.append(np.array(flux_fit_f2))
 
-    return collection_times_f1, collection_times_f2, collection_fluxes_f1, collection_fluxes_f2
+    return sample_times_f1, sample_fluxes_f1, sample_times_f2, sample_fluxes_f2
+
+def plot_light_curve_template(kmeans, best_number, sample_times, sample_fluxes, filter, save_fig =  False):
+
+    """
+    Plot the light curve template in a certain filter
+
+    Parameters:
+        kmeans (object): Kmeans model
+        best_number (int): Best number of clusters the parameter space can be divided into
+        sample_times (numpy.ndarray): Modified Julian Date of the best-fit data points in a certain filter
+        sample_fluxes (numpy.ndarray): Differential flux of the best-fit data points in a certain fitler
+        filter (str): Filter used to make the observations
+        save_fig (boolean or str): If str, name of the directory where the plot is saved, if boolean, show the plot
+
+    Outputs:
+        None
+    """
+
+    cluster_colours = {"green":"#296529", "purple":"#AA3377", "brown": "#65301A", "cyan": "#33BBEE"}
+    for idx in range(best_number): 
+
+        cluster_idx = np.where(kmeans.labels_ == idx)
+
+        mean_time = np.mean(np.array(sample_times)[cluster_idx], axis = 0)
+
+        mean_flux = np.mean(np.array(sample_fluxes)[cluster_idx], axis = 0)
+        std_flux = np.std(np.array(sample_fluxes)[cluster_idx], axis = 0)
+
+        plt.plot(mean_time, mean_flux, linewidth = 2, color = list(cluster_colours.values())[idx], label = f"K-means cluster {idx + 1}")
+        plt.fill_between(mean_time, mean_flux - std_flux, mean_flux + std_flux, color = list(cluster_colours.values())[idx], alpha = 0.15)
+ 
+    plt.xlabel("Time since peak (days)", fontsize = 13)
+    plt.ylabel("Normalised flux", fontsize = 13)
+    plt.grid(alpha = 0.3) 
+    plt.legend()
+
+    if type(save_fig) == str:
+        title = save_fig.replace("_", " ")
+        plt.title(f"Normalised light curves in the {filter}-band {title}.")
+        plt.savefig(f"../plots/machine_learning/Light_curve_template_{save_fig}", dpi = 300, bbox_inches = "tight")
+        plt.show()
+
+    else:
+        plt.title(f"Normalised {survey} light curves in the {filter}-band.")
+        plt.show()
     
 # %%
 
 if __name__ == '__main__':
 
     survey = "ZTF"
+    f1 = "r"
+    f2 = "g"
+
+    # survey = "ATLAS"
+    # f1 = "o"
+    # f2 = "c"
     
     fitting_parameters = np.load(f"../data/machine_learning/{survey}/fitting_parameters.npy", allow_pickle = True)
     fitting_parameters_one_peak = np.load(f"../data/machine_learning/{survey}/fitting_parameters_one_peak.npy", allow_pickle = True)
     global_parameters = np.load(f"../data/machine_learning/{survey}/global_parameters.npy")
     global_parameters_one_peak = np.load(f"../data/machine_learning/{survey}/global_parameters_one_peak.npy")
     number_of_peaks = np.load(f"../data/machine_learning/{survey}/number_of_peaks.npy")
-    sn_labels = np.load(f"../data/machine_learning/{survey}/sn_labels.npy")
-    sn_labels_color = np.load(f"../data/machine_learning/{survey}/sn_labels_color.npy")
+    sn_labels = np.load(f"../data/machine_learning/{survey}/SN_labels.npy")
+    sn_labels_color = np.load(f"../data/machine_learning/{survey}/SN_labels_color.npy")
+    
     scaler = StandardScaler()
 
     # %%
@@ -432,57 +495,12 @@ if __name__ == '__main__':
     kmeans = KMeans(n_clusters = best_number, random_state = 2804)
     kmeans.fit(low_dimension_combination_parameters)
 
-    plot_PCA_with_clusters(low_dimension_combination_parameters, sn_labels, kmeans, best_number, number_of_peaks, f"{survey}_combined_one-peak_dataset_in_the_PC_space")
+    plot_PCA_with_clusters(low_dimension_combination_parameters, sn_labels, kmeans, best_number, [1] * len(number_of_peaks), f"{survey}_combined_one-peak_dataset_in_the_PC_space")
 
     # %%
 
-    # collection_times_f1, collection_times_f2, collection_fluxes_f1, collection_fluxes_f2 = light_curve_template(survey, fitting_parameters[one_peak], number_of_peaks[one_peak])
-    collection_times_f1, collection_times_f2, collection_fluxes_f1, collection_fluxes_f2 = light_curve_template(survey, fitting_parameters_one_peak, [1] * len(number_of_peaks))
-
-    cluster_0 = np.where(kmeans.labels_ == 0)
-    cluster_1 = np.where(kmeans.labels_ == 1)
-    cluster_2 = np.where(kmeans.labels_ == 2)
-    # cluster_3 = np.where(kmeans.labels_ == 3)
-
-    # plt.plot(np.mean(np.array(collection_times_f1)[cluster_3], axis = 0), np.mean(np.array(collection_fluxes_f1)[cluster_3], axis = 0), linewidth = 2, color = "#76B7B2", label = "K-means cluster 3")
-    # plt.fill_between(np.mean(np.array(collection_times_f1)[cluster_3], axis = 0), np.mean(np.array(collection_fluxes_f1)[cluster_3], axis = 0) - np.std(np.array(collection_fluxes_f1)[cluster_3], axis = 0), np.mean(np.array(collection_fluxes_f1)[cluster_3], axis = 0) + np.std(np.array(collection_fluxes_f1)[cluster_3], axis = 0), color = "tab:cyan", alpha = 0.15)
-    
-    # plt.plot(np.mean(np.array(collection_times_f1)[cluster_2], axis = 0), np.mean(np.array(collection_fluxes_f1)[cluster_2], axis = 0), linewidth = 2, color = "#9C755F", label = "K-means cluster 3")
-    # plt.fill_between(np.mean(np.array(collection_times_f1)[cluster_2], axis = 0), np.mean(np.array(collection_fluxes_f1)[cluster_2], axis = 0) - np.std(np.array(collection_fluxes_f1)[cluster_2], axis = 0), np.mean(np.array(collection_fluxes_f1)[cluster_2], axis = 0) + np.std(np.array(collection_fluxes_f1)[cluster_2], axis = 0), color = "tab:brown", alpha = 0.15)
-
-    # plt.plot(np.mean(np.array(collection_times_f2)[cluster_1], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_1], axis = 0), linewidth = 2, color = "#B07AA1", label = "K-means cluster 2")
-    # plt.fill_between(np.mean(np.array(collection_times_f2)[cluster_1], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_1], axis = 0) - np.std(np.array(collection_fluxes_f2)[cluster_1], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_1], axis = 0) + np.std(np.array(collection_fluxes_f2)[cluster_1], axis = 0), color = "tab:purple", alpha = 0.15)
-
-    # plt.plot(np.mean(np.array(collection_times_f2)[cluster_0], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_0], axis = 0), linewidth = 2, color = "#59A14F", label = "K-means cluster 1")
-    # plt.fill_between(np.mean(np.array(collection_times_f2)[cluster_0], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_0], axis = 0) - np.std(np.array(collection_fluxes_f2)[cluster_0], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_0], axis = 0) + np.std(np.array(collection_fluxes_f2)[cluster_0], axis = 0), color = "tab:green", alpha = 0.15)
-
-    # plt.scatter(np.array(collection_times_f1)[cluster_3], np.array(collection_fluxes_f1)[cluster_3], s = 1, color = colours["cyan"], label = "K-means cluster 3")
-    # plt.legend()
-    # plt.xlim([-200, 500])
-    # plt.show()
-
-    # plt.scatter(np.array(collection_times_f1)[cluster_2], np.array(collection_fluxes_f1)[cluster_2], s = 1, color = colours["brown"], label = "K-means cluster 2")
-    # plt.legend()
-    # plt.xlim([-200, 500])
-    # plt.show()
-
-    # plt.scatter(np.array(collection_times_f1)[cluster_1], np.array(collection_fluxes_f1)[cluster_1], s = 1, color = colours["purple"], label = "K-means cluster 1")
-    # plt.legend()
-    # plt.xlim([-200, 500])
-    # plt.show()
-
-    plt.scatter(np.array(collection_times_f1)[cluster_0], np.array(collection_fluxes_f1)[cluster_0], s = 1, color = colours["green"], label = "K-means cluster 0")
-    # plt.legend()
-    # plt.xlim([-200, 500])
-    # plt.show()
-
-    plt.xlabel("Time since peak (days)", fontsize = 13)
-    plt.ylabel("Normalized flux", fontsize = 13)
-    plt.title(f"Normalized {survey} r-band light curves.")
-    plt.grid(alpha = 0.3) 
-    plt.legend()
-    # plt.savefig(f"../plots/machine_learning/Light_curve_template_{survey}_combined_dataset_in_the_PC_space", dpi = 300, bbox_inches = "tight")
-    plt.show()
+    sample_times_f1, sample_fluxes_f1, sample_times_f2, sample_fluxes_f2 = load_best_fit_light_curves(survey, fitting_parameters_one_peak, [1] * len(number_of_peaks))
+    plot_light_curve_template(kmeans, best_number, sample_times_f1, sample_fluxes_f1, f1, f"{survey}_combined_one-peak_dataset_in_the_PC_space")
 
     # %%
 

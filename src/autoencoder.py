@@ -3,7 +3,7 @@
 __ImportError__ = "One or more required packages are not installed. See requirements.txt."
 
 try:
-    from kmeans_clustering import plot_PCA_with_clusters, number_of_clusters, plot_SN_collection
+    from kmeans_clustering import plot_PCA_with_clusters, silhouette_score, load_best_fit_light_curves, plot_light_curve_template
 
     from sklearn.preprocessing import MinMaxScaler
     from sklearn.cluster import KMeans
@@ -30,7 +30,13 @@ colours = {"blue":"#0077BB", "orange": "#EE7733", "green":"#296529", "purple":"#
 # %%
 
 survey = "ZTF"
-    
+f1 = "r"
+f2 = "g"
+
+# survey = "ATLAS"
+# f1 = "o"
+# f2 = "c"
+
 fitting_parameters = np.load(f"../data/machine_learning/{survey}/fitting_parameters.npy", allow_pickle = True)
 fitting_parameters_one_peak = np.load(f"../data/machine_learning/{survey}/fitting_parameters_one_peak.npy", allow_pickle = True)
 global_parameters = np.load(f"../data/machine_learning/{survey}/global_parameters.npy")
@@ -177,9 +183,7 @@ for epoch in range(epochs):
 
 latent_representation = autoencoder.encode(tensor_dataset).detach()
 
-latent_representation_names = ["latent_dimension_1", "latent_dimension_2", "latent_dimension_3", "latent_dimension_4", "latent_dimension_5", "latent_dimension_6"]
-
-best_number = number_of_clusters(latent_representation, f"{survey}_model_fit_parameters_in_the_latent_space")
+best_number = silhouette_score(latent_representation, f"{survey}_model_fit_parameters_in_the_latent_space")
 kmeans = KMeans(n_clusters = best_number, random_state = 2804)
 predictions = kmeans.fit_predict(latent_representation)
 
@@ -226,9 +230,7 @@ for epoch in range(epochs):
 
 latent_representation = autoencoder.encode(tensor_dataset).detach()
 
-latent_representation_names = ["latent_dimension_1", "latent_dimension_2", "latent_dimension_3", "latent_dimension_4", "latent_dimension_5", "latent_dimension_6"]
-
-best_number = number_of_clusters(latent_representation, f"{survey}_one-peak_model_fit_parameters_in_the_latent_space")
+best_number = silhouette_score(latent_representation, f"{survey}_one-peak_model_fit_parameters_in_the_latent_space")
 kmeans = KMeans(n_clusters = best_number, random_state = 2804)
 predictions = kmeans.fit_predict(latent_representation)
 
@@ -274,9 +276,7 @@ for epoch in range(epochs):
 
 latent_representation = autoencoder.encode(tensor_dataset).detach()
 
-latent_representation_names = ["latent_dimension_1", "latent_dimension_2", "latent_dimension_3", "latent_dimension_4", "latent_dimension_5", "latent_dimension_6"]
-
-best_number = number_of_clusters(latent_representation, f"{survey}_light_curve_properties_in_the_latent_space")
+best_number = silhouette_score(latent_representation, f"{survey}_light_curve_properties_in_the_latent_space")
 kmeans = KMeans(n_clusters = best_number, random_state = 2804)
 predictions = kmeans.fit_predict(latent_representation)
 
@@ -322,13 +322,16 @@ for epoch in range(epochs):
 
 latent_representation = autoencoder.encode(tensor_dataset).detach()
 
-latent_representation_names = ["latent_dimension_1", "latent_dimension_2", "latent_dimension_3", "latent_dimension_4", "latent_dimension_5", "latent_dimension_6"]
-
-best_number = number_of_clusters(latent_representation, f"{survey}_combined_dataset_in_the_latent_space")
+best_number = silhouette_score(latent_representation, f"{survey}_combined_one-peak_dataset_in_the_latent_space")
 kmeans = KMeans(n_clusters = best_number, random_state = 2804)
 predictions = kmeans.fit_predict(latent_representation)
 
-plot_PCA_with_clusters(latent_representation, SN_labels, kmeans, best_number, [1] * len(number_of_peaks),  f"{survey}_combined_dataset_in_the_latent_space")
+plot_PCA_with_clusters(latent_representation, SN_labels, kmeans, best_number, [1] * len(number_of_peaks),  f"{survey}_combined_one-peak_dataset_in_the_latent_space")
+
+# %%
+
+sample_times_f1, sample_fluxes_f1, sample_times_f2, sample_fluxes_f2 = load_best_fit_light_curves(survey, fitting_parameters_one_peak, [1] * len(number_of_peaks))
+plot_light_curve_template(kmeans, best_number, sample_times_f1, sample_fluxes_f1, f1, f"{survey}_combined_one-peak_dataset_in_the_PC_space")
 
 # %%
 
@@ -384,13 +387,11 @@ print("number of iterations", n_iterations)
 
 latent_representation = autoencoder.encode(tensor_dataset).detach()
 
-latent_representation_names = ["latent_dimension_1", "latent_dimension_2", "latent_dimension_3", "latent_dimension_4", "latent_dimension_5", "latent_dimension_6"]
-
 kmeans = KMeans(n_clusters = best_number, random_state = 2804)
 predictions = kmeans.fit_predict(latent_representation)
 kmeans.cluster_centers_ = kmeans.cluster_centers_.astype(np.float64)
 
-plot_PCA_with_clusters(latent_representation, SN_labels, kmeans, 2, [1] * len(number_of_peaks),  f"{survey}_SNe_using_an_autoencoder")
+plot_PCA_with_clusters(latent_representation, SN_labels, kmeans, 2, [1] * len(number_of_peaks), f"{survey}_SNe_using_an_autoencoder")
 
 # %%
 
@@ -405,55 +406,4 @@ print(fitting_parameters_one_peak[:, 0][cluster_2], len(fitting_parameters_one_p
 print(SN_labels[cluster_0], len(SN_labels[cluster_0]))
 print(SN_labels[cluster_1], len(SN_labels[cluster_1]))
 print(SN_labels[cluster_2], len(SN_labels[cluster_2]))
-
-# %%
-
-# collection_times_f1, collection_times_f2, collection_fluxes_f1, collection_fluxes_f2 = plot_SN_collection(survey, fitting_parameters[one_peak], number_of_peaks[one_peak])
-collection_times_f1, collection_times_f2, collection_fluxes_f1, collection_fluxes_f2 = plot_SN_collection(survey, fitting_parameters_one_peak, [1] * len(number_of_peaks))
-
-cluster_0 = np.where(kmeans.labels_ == 0)
-cluster_1 = np.where(kmeans.labels_ == 1)
-# cluster_2 = np.where(kmeans.labels_ == 2)
-# cluster_3 = np.where(kmeans.labels_ == 3)
-
-# plt.plot(np.mean(np.array(collection_times_f1)[cluster_3], axis = 0), np.mean(np.array(collection_fluxes_f1)[cluster_3], axis = 0), linewidth = 2, color = colours["cyan"], label = "K-means cluster 3")
-# plt.fill_between(np.mean(np.array(collection_times_f1)[cluster_3], axis = 0), np.mean(np.array(collection_fluxes_f1)[cluster_3], axis = 0) - np.std(np.array(collection_fluxes_f1)[cluster_3], axis = 0), np.mean(np.array(collection_fluxes_f1)[cluster_3], axis = 0) + np.std(np.array(collection_fluxes_f1)[cluster_3], axis = 0), color = colours["cyan"], alpha = 0.15)
-
-# plt.plot(np.mean(np.array(collection_times_f1)[cluster_2], axis = 0), np.mean(np.array(collection_fluxes_f1)[cluster_2], axis = 0), linewidth = 2, color = colours["brown"], label = "K-means cluster 3")
-# plt.fill_between(np.mean(np.array(collection_times_f1)[cluster_2], axis = 0), np.mean(np.array(collection_fluxes_f1)[cluster_2], axis = 0) - np.std(np.array(collection_fluxes_f1)[cluster_2], axis = 0), np.mean(np.array(collection_fluxes_f1)[cluster_2], axis = 0) + np.std(np.array(collection_fluxes_f1)[cluster_2], axis = 0), color = colours["brown"], alpha = 0.15)
-
-plt.plot(np.mean(np.array(collection_times_f2)[cluster_1], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_1], axis = 0), linewidth = 2, color = colours["purple"], label = "K-means cluster 2")
-plt.fill_between(np.mean(np.array(collection_times_f2)[cluster_1], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_1], axis = 0) - np.std(np.array(collection_fluxes_f2)[cluster_1], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_1], axis = 0) + np.std(np.array(collection_fluxes_f2)[cluster_1], axis = 0), color = colours["purple"], alpha = 0.15)
-
-plt.plot(np.mean(np.array(collection_times_f2)[cluster_0], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_0], axis = 0), linewidth = 2, color = colours["green"], label = "K-means cluster 1")
-plt.fill_between(np.mean(np.array(collection_times_f2)[cluster_0], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_0], axis = 0) - np.std(np.array(collection_fluxes_f2)[cluster_0], axis = 0), np.mean(np.array(collection_fluxes_f2)[cluster_0], axis = 0) + np.std(np.array(collection_fluxes_f2)[cluster_0], axis = 0), color = colours["green"], alpha = 0.15)
-
-# plt.scatter(np.array(collection_times_f1)[cluster_3], np.array(collection_fluxes_f1)[cluster_3], s = 1, color = "tab:cyan", label = "K-means cluster 3")
-# plt.legend()
-# plt.xlim([-200, 500])
-# plt.show()
-
-# plt.scatter(np.array(collection_times_f1)[cluster_2], np.array(collection_fluxes_f1)[cluster_2], s = 1, color = "tab:brown", label = "K-means cluster 2")
-# plt.legend()
-# plt.xlim([-200, 500])
-# plt.show()
-
-# plt.scatter(np.array(collection_times_f1)[cluster_1], np.array(collection_fluxes_f1)[cluster_1], s = 1, color = "tab:purple", label = "K-means cluster 1")
-# plt.legend()
-# plt.xlim([-200, 500])
-# plt.show()
-
-# plt.scatter(np.array(collection_times_f1)[cluster_0], np.array(collection_fluxes_f1)[cluster_0], s = 1, color = "tab:green", label = "K-means cluster 0")
-# plt.legend()
-# plt.xlim([-200, 500])
-# plt.show()
-
-plt.xlabel("Time since peak (days)", fontsize = 13)
-plt.ylabel("Normalized flux", fontsize = 13)
-plt.title(f"Normalized {survey} r-band light curves.")
-plt.grid(alpha = 0.3) 
-plt.legend()
-plt.savefig(f"../plots/machine_learning/Light_curve_template_{survey}_combined_dataset_in_the_latent_space", dpi = 300, bbox_inches = "tight")
-plt.show()
-# %%
 
