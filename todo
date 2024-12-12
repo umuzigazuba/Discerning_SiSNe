@@ -1,0 +1,12 @@
+- [ ] Add (some) historic and futute data points when fitting the light curve 
+- [ ] Try different clustering method that does account for the diameter of the clusters
+- [ ] **Convert code to object oriented code**
+- [ ] Write scipt that converts ZTF and ATLAS raw data to the same format
+- [ ] Change the ATLAS raw data filenames to include the ATLAS internal name
+- [ ] Ameliorate baseline selection
+- [ ] Adjust find_extrema function to loop over filters
+- [ ] Adjust second_peak functions to use "cube" as parameter
+- [ ] Optimise calculation of light curve properties 
+- [ ] **Add example.py for one SN**
+- [ ] **Adjust light curve template function to include change in FWHM**
+- [ ] Adjust light curve template function so that is determined by the raw data only
