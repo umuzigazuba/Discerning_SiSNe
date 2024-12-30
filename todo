@@ -11,3 +11,4 @@
 - [ ] **Adjust light curve template function to include change in FWHM**
 - [ ] Adjust light curve template function so that is determined by the raw data only
 - [ ] Add code that plots the different steps of the two-peak fitting process to `src/make_plots_report.py`
+- [ ] Add weights/importantness based on the completeness of a light curve
